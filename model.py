@@ -4,7 +4,7 @@ from tensorflow.contrib import slim
 import utils
 from config import voc_vgg_300
 import data_gen
-batch_size = 4
+batch_size = 1
 import cv2
 import numpy as np
 import np_utils
@@ -279,7 +279,7 @@ def detect(ip):
                 scores.append(sc[s])
 
         #visual.display_instances(org,np.asarray(bxx)*300)
-        visual.display_instances_title(org,np.asarray(bxx)*300,class_ids=np.asarray(cls),class_names=data_voc.VOC_CLASSES,scores=scores)
+        visual.display_instances_title(org,np.asarray(bxx)*300,class_ids=np.asarray(cls),class_names=['face'],scores=scores)
 
 
 
@@ -328,8 +328,8 @@ def train():
                 summaries = sess.run(sum_op,feed_dict=feed_dict)
                 sv.summary_computed(sess, summaries)
                 print(ls)
-train()
+#train()
 #tf.enable_eager_execution()
 #eger()
 
-#detect('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/face_detect/originalPics/2002/07/19/big/img_352.jpg')
+detect('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/face_detect/originalPics/2002/07/19/big/img_135.jpg')
