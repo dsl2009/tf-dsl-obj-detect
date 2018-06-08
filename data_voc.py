@@ -110,7 +110,7 @@ class VOCDetection(object):
 
     def __init__(self, root,
                  image_sets=[ ('2007', 'trainval'),('2012', 'trainval')],
-                 transform=AugAnnotationTransform(300), target_transform=VOCAnnotationTransform(),
+                 transform=AugAnnotationTransform(512), target_transform=VOCAnnotationTransform(),
                  dataset_name='VOC0712'):
         self.root = root
         self.image_set = image_sets

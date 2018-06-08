@@ -2,17 +2,15 @@
 import tensorflow as tf
 from tensorflow.contrib import slim
 import utils
-from config import voc_vgg_300
 import data_gen
-batch_size = 1
 import cv2
 import numpy as np
 import np_utils
 import visual
-import data_voc
-from preprocessing import vgg_preprocessing
+import time
+import glob
 #tf.enable_eager_execution()
-def model(inputs):
+def model(inputs,cfg):
     source = []
     with tf.variable_scope('vgg_16',default_name=None, values=[inputs]) as sc:
         end_points_collection = sc.original_name_scope + '_end_points'
@@ -29,11 +27,12 @@ def model(inputs):
             net = slim.repeat(net, 3, slim.conv2d, 512, [3, 3], scope='conv5')
             net = slim.max_pool2d(net, kernel_size=3,stride=1, scope='pool5')
             vbs = slim.get_trainable_variables()
+            utils.count_parm()
             #vbs =None
             cv6 = slim.conv2d(net,1024,kernel_size=3,rate=6,activation_fn=slim.nn.relu,scope='conv6')
             cv7 = slim.conv2d(cv6,1024,kernel_size=1,activation_fn=slim.nn.relu,scope='conv7')
 
-            s = utils.normalize_to_target(cov_43, target_norm_value=1.0, dim=1)
+            s = utils.normalize_to_target(cov_43, target_norm_value=2.0, dim=1)
 
 
 
@@ -51,49 +50,34 @@ def model(inputs):
             source = [s,cv7,cv8,cv9,cv10,cv11]
             conf = []
             loc = []
-            for cv,num in zip(source,voc_vgg_300['aspect_num']):
-                print(num)
+            for cv,num in zip(source,cfg.Config['aspect_num']):
+
                 loc.append(slim.conv2d(cv,num*4,kernel_size=3,stride=1,activation_fn=None))
 
-                conf.append(slim.conv2d(cv, num*voc_vgg_300['num_classes'], kernel_size=3, stride=1, activation_fn=None))
-
-        loc = tf.concat([tf.reshape(o, shape=(batch_size, -1, 4)) for o in loc], axis=1)
-        conf = tf.concat([tf.reshape(o, shape=(batch_size, -1, voc_vgg_300['num_classes'])) for o in conf], axis=1)
+                conf.append(slim.conv2d(cv, num*cfg.Config['num_classes'], kernel_size=3, stride=1, activation_fn=None))
+            print(loc)
+        loc = tf.concat([tf.reshape(o, shape=(cfg.batch_size, -1, 4)) for o in loc], axis=1)
+        conf = tf.concat([tf.reshape(o, shape=(cfg.batch_size, -1, cfg.Config['num_classes'])) for o in conf], axis=1)
         return loc,conf,vbs
 
 def loss_clc(truth_box,gt_lables):
     true_box, non_ze = utils.trim_zeros_graph(truth_box)
     gt_lables = tf.boolean_mask(gt_lables, non_ze)
-
-
     priors = utils.get_prio_box()
     priors_xywh = tf.concat((priors[:, :2] - priors[:, 2:] / 2,
                priors[:, :2] + priors[:, 2:] / 2), axis=1)
     ops = utils.overlaps_graph(true_box,priors_xywh)
-
     # 获取prior box 最佳匹配index size = trueth
     best_prior_idx = tf.argmax(ops,axis=1)
     # 获取truth box 最佳匹配index size = prior
     best_truth_idx = tf.argmax(ops,axis=0)
     best_truth_overlab = tf.reduce_max(ops,axis=0)
-
-
-
     matches = tf.gather(truth_box,best_truth_idx)
-
-
-
-
     conf = tf.gather(gt_lables,best_truth_idx)
-
     conf = tf.cast(conf,tf.float32)
-
     zer = tf.zeros(shape=(tf.shape(conf)),dtype=tf.float32)
     conf = tf.where(tf.less(best_truth_overlab,0.5),zer,conf)
-
-
     loc = utils.encode_box(matched=matches,prios=priors)
-
     return conf,loc
 def smooth_l1_loss(y_true, y_pred):
     """Implements Smooth-L1 loss.
@@ -108,8 +92,8 @@ def log_sum(x):
     data = tf.log(tf.reduce_sum(tf.exp(x - mx), axis=1)) + mx
     return tf.reshape(data, (-1, 1))
 
-def get_loss(ip, conf_t, loc_t):
-    pred_loc, pred_confs,vbs = model(ip)
+def get_loss(conf_t,loc_t,pred_loc, pred_confs,cfg):
+
 
    # conf_t, loc_t = utils.batch_slice(inputs=[truth_box, gt_lables], graph_fn=loss_clc, batch_size=batch_size)
 
@@ -132,7 +116,7 @@ def get_loss(ip, conf_t, loc_t):
                                    tf.constant(0.0))
     loss_l = tf.reduce_sum(loss)
 
-    pred_conf = tf.reshape(pred_confs,shape=(-1, voc_vgg_300['num_classes']))
+    pred_conf = tf.reshape(pred_confs,shape=(-1, cfg.Config['num_classes']))
 
     conf_t_tm = tf.cast(conf_t,tf.int32)
     conf_t_tm  = tf.reshape(conf_t_tm ,shape=(-1,))
@@ -142,8 +126,8 @@ def get_loss(ip, conf_t, loc_t):
 
     loss_c = log_sum(pred_conf) - tf.expand_dims(tf.gather_nd(pred_conf, index),-1)
 
-    loss_c = tf.reshape(loss_c,shape=(batch_size,-1))
-    conf_t = tf.reshape(conf_t, shape=(batch_size, -1))
+    loss_c = tf.reshape(loss_c,shape=(cfg.batch_size,-1))
+    conf_t = tf.reshape(conf_t, shape=(cfg.batch_size, -1))
 
     zeros = tf.zeros(shape=tf.shape(loss_c),dtype=tf.float32)
     loss_c = tf.where(tf.greater(conf_t,0),zeros,loss_c)
@@ -153,7 +137,7 @@ def get_loss(ip, conf_t, loc_t):
     ne_num = pos_num*3
 
     los = []
-    for s in range(batch_size):
+    for s in range(cfg.batch_size):
         loss_tt = loss_c[s,:]
         value,ne_index = tf.nn.top_k(loss_tt,k=ne_num[s])
         pos_ix = tf.where(conf_t[s,:] > 0)[:,0]
@@ -163,7 +147,7 @@ def get_loss(ip, conf_t, loc_t):
 
         label = tf.gather(conf_t[s,:],ix)
         label = tf.cast(label,tf.int32)
-        label = tf.one_hot(label,depth=voc_vgg_300['num_classes'])
+        label = tf.one_hot(label,depth=cfg.Config['num_classes'])
         logits = tf.gather(pred_confs[s,:],ix)
 
 
@@ -172,7 +156,7 @@ def get_loss(ip, conf_t, loc_t):
                                      tf.nn.softmax_cross_entropy_with_logits(labels=label, logits=logits),
                                  tf.constant(0.0))
 
-        ls = tf.reduce_mean(ls)
+        ls = tf.reduce_sum(ls)
 
         los.append(ls)
 
@@ -202,22 +186,22 @@ def get_loss(ip, conf_t, loc_t):
     train_tensors = tf.identity(total_loss, 'ss')
 
 
-    return train_tensors,vbs,sum_op
+    return train_tensors,sum_op
 
 
-def eger():
-    gen = data_gen.get_batch(batch_size=batch_size)
+def eger(cfg):
+    gen = data_gen.get_batch(batch_size=cfg.batch_size)
 
 
     images, true_box, true_label = next(gen)
     print(true_label)
-    loct, conft = np_utils.get_loc_conf(true_box, true_label, batch_size=batch_size)
+    loct, conft = np_utils.get_loc_conf(true_box, true_label, batch_size=cfg.batch_size)
     get_loss(images, conft, loct)
 
-def predict(ig):
-    pred_loc, pred_confs, vbs = model(ig)
-    priors = utils.get_prio_box()
-    print(pred_loc)
+def predict(ig,pred_loc, pred_confs, vbs,cfg):
+
+    priors = utils.get_prio_box(cfg=cfg)
+
     box = utils.decode_box(prios=priors, pred_loc=pred_loc[0])
     props = slim.nn.softmax(pred_confs[0])
     pp = props[:,1:]
@@ -243,69 +227,93 @@ def predict(ig):
 
 
 
-
-
-
-
-
-
-
-
-def detect(ip):
-
-    img = cv2.imread(ip)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    org, window, scale, padding, crop = utils.resize_image(img, min_dim=300, max_dim=300)
-
-    img = (org.astype(np.float32) - np.array([123.7, 116.8, 103.9])) / 255
-    img = np.expand_dims(img, axis=0)
+def detect(x):
     ig = tf.placeholder(shape=(1, 300, 300, 3), dtype=tf.float32)
-
     box,score,pp = predict(ig)
-
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
+        saver.restore(sess, '/home/dsl/all_check/face_detect/model.ckpt-23940')
+        for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/face_detect/originalPics/2002/07/19/big/*.jpg'):
+            img = cv2.imread(ip)
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+            org, window, scale, padding, crop = utils.resize_image(img, min_dim=300, max_dim=300)
 
-        saver.restore(sess, 'log/model.ckpt-10249')
-        bx,sc,p= sess.run([box,score,pp],feed_dict={ig:img})
-        bxx = []
-        cls = []
-        scores = []
-        for s in range(len(p)):
-            if sc[s]>0.5:
-                bxx.append(bx[s])
-                cls.append(p[s])
-                scores.append(sc[s])
+            img = (org.astype(np.float32) - np.array([123.7, 116.8, 103.9])) / 255
+            img = np.expand_dims(img, axis=0)
+            t = time.time()
+            bx,sc,p= sess.run([box,score,pp],feed_dict={ig:img})
+            print(time.time()-t)
+            bxx = []
+            cls = []
+            scores = []
+            for s in range(len(p)):
+                if sc[s]>0.5:
+                    bxx.append(bx[s])
+                    cls.append(p[s])
+                    scores.append(sc[s])
 
-        #visual.display_instances(org,np.asarray(bxx)*300)
-        visual.display_instances_title(org,np.asarray(bxx)*300,class_ids=np.asarray(cls),class_names=['face'],scores=scores)
+            #visual.display_instances(org,np.asarray(bxx)*300)
+            visual.display_instances_title(org,np.asarray(bxx)*300,class_ids=np.asarray(cls),class_names=['face'],scores=scores)
+
+def video():
+    ig = tf.placeholder(shape=(1, 300, 300, 3), dtype=tf.float32)
+    box, score, pp = predict(ig)
+    saver = tf.train.Saver()
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        saver.restore(sess, '/home/dsl/all_check/face_detect/model.ckpt-20512')
+        cap = cv2.VideoCapture('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/face_detect/tt.mp4')
+        cap.set(3,320*3)
+        cap.set(4,320*3)
+        while True:
+            ret ,frame = cap.read()
+
+
+            img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            org, window, scale, padding, crop = utils.resize_image(img, min_dim=300, max_dim=300)
+
+            img = (org.astype(np.float32) - np.array([123.7, 116.8, 103.9])) / 255
+            img = np.expand_dims(img, axis=0)
+            t = time.time()
+            bx, sc, p = sess.run([box, score, pp], feed_dict={ig: img})
+            print(time.time() - t)
+            bxx = []
+            cls = []
+            scores = []
+            for s in range(len(p)):
+                if sc[s] > 0.5:
+                    bxx.append(bx[s])
+                    cls.append(p[s])
+                    scores.append(sc[s])
+            if len(bxx)>0:
+                finbox = utils.revert_image(scale,padding,300,np.asarray(bxx))
+                for s in finbox:
+                    cv2.rectangle(frame,pt1=(s[0],s[1]),pt2=(s[2],s[3]),color=(0,255,0),thickness=2)
+            cv2.imshow('fram',frame)
+            if cv2.waitKeyEx(1) & 0xFF == ord('q'):
+                break
+    cap.release()
+    cv2.destroyAllWindows()
 
 
 
 
 
 
-
-
-
-
-
-
-
-
-def train():
-    img = tf.placeholder(shape=[batch_size, 300, 300, 3], dtype=tf.float32)
+def train(cfg):
+    img = tf.placeholder(shape=[cfg.batch_size, 300, 300, 3], dtype=tf.float32)
     #boxs = tf.placeholder(shape=[batch_size, 50, 4], dtype=tf.float32)
     #label = tf.placeholder(shape=[batch_size, 50], dtype=tf.int32)
-    loc = tf.placeholder(shape=[batch_size, 7512,4], dtype=tf.float32)
-    conf =  tf.placeholder(shape=[batch_size, 7512], dtype=tf.float32)
+    loc = tf.placeholder(shape=[cfg.batch_size, 7512,4], dtype=tf.float32)
+    conf =  tf.placeholder(shape=[cfg.batch_size, 7512], dtype=tf.float32)
 
+    pred_loc, pred_confs, vbs = model(img)
 
+    train_tensors,sum_op = get_loss(conf,loc,pred_loc, pred_confs)
 
-    train_tensors,vbs,sum_op = get_loss(img,  conf,loc)
-    gen = data_gen.get_batch(batch_size=batch_size)
-    optimizer = tf.train.MomentumOptimizer(learning_rate=0.0001, momentum=0.9)
+    gen = data_gen.get_batch(batch_size=cfg.batch_size)
+    optimizer = tf.train.MomentumOptimizer(learning_rate=0.001, momentum=0.9)
     train_op = slim.learning.create_train_op(train_tensors, optimizer)
 
 
@@ -313,13 +321,13 @@ def train():
     def restore(sess):
         saver.restore(sess,'/home/dsl/all_check/vgg_16.ckpt')
 
-    sv = tf.train.Supervisor(logdir='log', summary_op=None, init_fn=restore)
+    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect', summary_op=None, init_fn=restore)
 
     with sv.managed_session() as sess:
         for step in range(1000000000):
 
             images, true_box, true_label = next(gen)
-            loct,conft = np_utils.get_loc_conf(true_box,true_label,batch_size=batch_size)
+            loct,conft = np_utils.get_loc_conf(true_box,true_label,batch_size=cfg.batch_size)
             feed_dict = {img: images, loc: loct,
                          conf: conft}
 
@@ -332,4 +340,5 @@ def train():
 #tf.enable_eager_execution()
 #eger()
 
-detect('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/face_detect/originalPics/2002/07/19/big/img_135.jpg')
+#detect('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit/VOC2007/JPEGImages/000133.jpg')
+#video()

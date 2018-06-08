@@ -1,7 +1,5 @@
 import os
-import sys
-import torch
-import torch.utils.data as data
+
 import cv2
 import numpy as np
 import json
@@ -58,11 +56,11 @@ class AugAnnotationTransform(object):
 class Face(object):
 
 
-    def __init__(self,root):
+    def __init__(self,root,image_size):
         self.data = json.loads(open(root).read())
         self.ids = list(self.data.keys())
         self.ids = self.ids[0:len(self.ids)-len(self.ids)%8]
-        self.transform = AugAnnotationTransform(300)
+        self.transform = AugAnnotationTransform(image_size)
         self.name = 'FACE'
 
     def len(self):

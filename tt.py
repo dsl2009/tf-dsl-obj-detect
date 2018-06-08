@@ -2,7 +2,9 @@ from torch import nn
 import torch
 import numpy as np
 import tensorflow as tf
+import utils
 tf.enable_eager_execution()
+
 def tensor_shape(x, rank=3):
     """Returns the dimensions of a tensor.
     Args:
@@ -38,10 +40,8 @@ def log_sum_exp(x):
     print(x_max)
     return torch.log(torch.sum(torch.exp(x-x_max), 1, keepdim=True)) + x_max
 
-a = [[1,2,3,4,5,7],[1,2,3,4,5.2,1]]
-b = [3,4,2,0]
-k = tf.nn.softmax(a)
-k = tf.reduce_max(k,axis=1)
-print(tf.where(tf.greater(k,0.8))[:,0])
+a = tf.constant([[1,2,3,4,5.0],[1,3,3,4,5.0]],dtype=tf.float32)
+b = tf.constant([[1,0,0,0,0],[0,1,0,0,0]],dtype=tf.int32)
+print(tf.losses.softmax_cross_entropy(onehot_labels=b,logits=a))
 
-
+print(tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=a,labels=b)))

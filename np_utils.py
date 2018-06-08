@@ -92,9 +92,9 @@ def encode(matched, priors, variances):
     return np.hstack([g_cxcy, g_wh])  # [num_priors,4]
 
 
-def get_loc_conf(true_box, true_label,batch_size = 4):
+def get_loc_conf(true_box, true_label,batch_size = 4,cfg = config.voc_vgg_300):
 
-    pri = get_prio_box()
+    pri = get_prio_box(cfg = cfg)
     num_priors = pri.shape[0]
     loc_t = np.zeros([batch_size, num_priors, 4])
     conf_t = np.zeros([batch_size, num_priors])

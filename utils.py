@@ -312,3 +312,30 @@ def resize_image(image, min_dim=None, max_dim=None, min_scale=None, mode="square
     return image.astype(image_dtype), window, scale, padding, crop
 
 
+def revert_image(scale,padding,image_size,box):
+
+    box = box*image_size
+
+    box[:, 0] = box[:, 0] - padding[1][0]
+    box[:, 1] = box[:, 1] - padding[0][0]
+    box[:, 2] = box[:, 2] - padding[1][1]
+    box[:, 3] = box[:, 3] - padding[0][1]
+    box = box/scale
+    box = np.asarray(box,dtype=np.int32)
+    return box
+
+
+def count_parm():
+    total_parameters = 0
+    for variable in tf.trainable_variables():
+        # shape is an array of tf.Dimension
+        shape = variable.get_shape()
+        # print(shape)
+        # print(len(shape))
+        variable_parameters = 1
+        for dim in shape:
+            # print(dim)
+            variable_parameters *= dim.value
+        # print(variable_parameters)
+        total_parameters += variable_parameters
+    print(total_parameters)
