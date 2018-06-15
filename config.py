@@ -21,8 +21,8 @@ voc_vgg_500 = {
     'feature_maps': [64, 30, 15, 8, 4, 2],
     'min_dim': 512,
     'steps': [8, 16, 32, 64, 128, 256],
-    'min_sizes': [30 , 89 ,165 ,241 ,318 ,394],
-    'max_sizes': [60, 165 ,241 ,318 ,394 ,470],
+    'min_sizes': [30 , 60 ,120 ,240 ,318 ,394],
+    'max_sizes': [60, 120 ,240 ,318 ,394 ,470],
     'aspect_ratios': [[2], [2, 3], [2, 3], [2, 3], [2], [2]],
     'aspect_num':[4,6,6,6,4,4],
     'variance': [0.1, 0.2],
@@ -37,8 +37,8 @@ voc_inceptionv2_dsl_500 = {
     'feature_maps': [64, 32, 16, 8, 4, 2],
     'min_dim': 512,
     'steps': [8, 16, 32, 64, 128, 256],
-    'min_sizes': [30 , 89 ,165 ,241 ,318 ,394],
-    'max_sizes': [60, 165 ,241 ,318 ,394 ,470],
+    'min_sizes': [32 , 64 ,128 ,192 ,300 ,412],
+    'max_sizes': [64, 128 ,192 ,300 ,412 ,556],
     'aspect_ratios': [[2], [2, 3], [2, 3], [2, 3], [2], [2]],
     'aspect_num':[4,6,6,6,4,4],
     'variance': [0.1, 0.2],
@@ -53,7 +53,7 @@ face_inceptionv2_dsl_500 = {
     'min_dim': 512,
     'steps': [8, 16, 32, 64, 128, 256],
     'min_sizes': [30 , 89 ,165 ,241 ,318 ,394],
-    'max_sizes': [60, 165 ,241 ,318 ,394 ,470],
+    'max_sizes': [60, 165 ,241 ,318 ,394 ,512],
     'aspect_ratios': [[2], [2, 3], [2, 3], [2, 3], [2], [2]],
     'aspect_num':[4,6,6,6,4,4],
     'variance': [0.1, 0.2],
@@ -82,8 +82,10 @@ VOC_CLASSES = (
     'cow', 'diningtable', 'dog', 'horse',
     'motorbike', 'person', 'pottedplant',
     'sheep', 'sofa', 'train', 'tvmonitor')
+FACE_CLASSES = ['face']
 MAX_GT = 100
 batch_size = 8
+image_size = 512
 Config = voc_inceptionv2_dsl_500
 
 
