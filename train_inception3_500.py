@@ -1,4 +1,4 @@
-from models import inception_500_dsl,inception_500_ince
+from models import inceptionv3_500_ince
 import tensorflow as tf
 import time
 import config
@@ -14,7 +14,7 @@ import utils
 import numpy as np
 import time
 import visual
-
+from tensorflow.contrib.framework.python.ops.variables import get_or_create_global_step
 def train():
     img = tf.placeholder(shape=[config.batch_size, config.Config['min_dim'], config.Config['min_dim'], 3], dtype=tf.float32)
     anchors_num = sum(
@@ -23,21 +23,32 @@ def train():
     loc = tf.placeholder(shape=[config.batch_size, anchors_num, 4], dtype=tf.float32)
     conf = tf.placeholder(shape=[config.batch_size, anchors_num], dtype=tf.float32)
 
-    pred_loc, pred_confs, vbs = inception_500_ince.inception_v2_ssd(img,config)
+    pred_loc, pred_confs, vbs = inceptionv3_500_ince.inception_v2_ssd(img,config)
 
 
-    train_tensors, sum_op = get_loss(conf, loc, pred_loc, pred_confs,config)
+    train_tensors = get_loss(conf, loc, pred_loc, pred_confs,config)
+    global_step = get_or_create_global_step()
+
+    # Define your exponentially decaying learning rate
+    lr = tf.train.exponential_decay(
+        learning_rate=0.001,
+        global_step=global_step,
+        decay_steps=20000,
+        decay_rate=0.7,
+        staircase=True)
+    tf.summary.scalar('lr',lr)
+    sum_op = tf.summary.merge_all()
 
     gen = data_gen.get_batch_inception(batch_size=config.batch_size,image_size=config.Config['min_dim'],max_detect=50)
-    optimizer = tf.train.MomentumOptimizer(learning_rate=0.001,momentum=0.9)
+    optimizer = tf.train.MomentumOptimizer(learning_rate=lr,momentum=0.9)
     train_op = slim.learning.create_train_op(train_tensors, optimizer)
 
     saver = tf.train.Saver(vbs)
 
     def restore(sess):
-        saver.restore(sess, '/home/dsl/all_check/inception_v2.ckpt')
+        saver.restore(sess, '/home/dsl/all_check/inception_v3.ckpt')
 
-    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect/voc-ince', summary_op=None, init_fn=restore)
+    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect/voc-v31', summary_op=None, init_fn=restore)
 
     with sv.managed_session() as sess:
         for step in range(1000000000):
@@ -48,7 +59,7 @@ def train():
             feed_dict = {img: images, loc: loct,
                          conf: conft}
 
-            ls = sess.run(train_op, feed_dict=feed_dict)
+            ls,step = sess.run([train_op,global_step], feed_dict=feed_dict)
             if step % 10 == 0:
                 summaries = sess.run(sum_op, feed_dict=feed_dict)
                 sv.summary_computed(sess, summaries)
@@ -58,13 +69,13 @@ def train():
 def detect():
     config.batch_size = 1
     ig = tf.placeholder(shape=(1, 512, 512, 3), dtype=tf.float32)
-    pred_loc, pred_confs, vbs = inception_500_dsl.inception_v2_ssd(ig,config)
+    pred_loc, pred_confs, vbs = inceptionv3_500_ince.inception_v2_ssd(ig,config)
     box,score,pp = predict(ig,pred_loc, pred_confs, vbs,config.Config)
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/voc-aug/model.ckpt-91518')
-        for ip in glob.glob('/home/dsl/ssd300_pascalVOC_pred_04.png'):
+        saver.restore(sess, '/home/dsl/all_check/face_detect/voc-v31/model.ckpt-14815')
+        for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit/VOC2012/JPEGImages/*.jpg'):
             print(ip)
             img = cv2.imread(ip)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -79,7 +90,7 @@ def detect():
             cls = []
             scores = []
             for s in range(len(p)):
-                if sc[s]>0.5:
+                if sc[s]>0.2:
                     bxx.append(bx[s])
                     cls.append(p[s])
                     scores.append(sc[s])

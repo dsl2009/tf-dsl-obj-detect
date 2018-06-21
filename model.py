@@ -180,13 +180,12 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,cfg):
     total_loss = tf.losses.get_losses()
     tf.summary.scalar(name='class_loss',tensor=final_loss_c)
     tf.summary.scalar(name='loc_loss', tensor=final_loss_l)
-    sum_op = tf.summary.merge_all()
 
 
     train_tensors = tf.identity(total_loss, 'ss')
 
 
-    return train_tensors,sum_op
+    return train_tensors
 
 
 def eger(cfg):
@@ -219,7 +218,7 @@ def predict(ig,pred_loc, pred_confs, vbs,cfg):
     keep = tf.image.non_max_suppression(
         scores=score,
         boxes=box,
-        iou_threshold=0.6,
+        iou_threshold=0.5,
         max_output_size=50
     )
     return tf.gather(box,keep),tf.gather(score,keep),tf.gather(cls,keep)

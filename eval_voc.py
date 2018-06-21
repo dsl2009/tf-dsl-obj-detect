@@ -1,4 +1,4 @@
-from models import inception_500_dsl
+from models import inceptionv3_500_ince,inception_500_ince
 import tensorflow as tf
 import eval_utils
 import config
@@ -61,12 +61,12 @@ def detect():
     dts = '/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit/VOC2007/ImageSets/Main/test.txt'
     config.batch_size = 1
     ig = tf.placeholder(shape=(1, 512, 512, 3), dtype=tf.float32)
-    pred_loc, pred_confs, vbs = inception_500_dsl.inception_v2_ssd(ig,config)
+    pred_loc, pred_confs, vbs = inceptionv3_500_ince.inception_v2_ssd(ig,config)
     box,score,pp = predict(ig,pred_loc, pred_confs, vbs,config.Config)
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/voc-aug/model.ckpt-91518')
+        saver.restore(sess, '/home/dsl/all_check/face_detect/voc-v3/model.ckpt-27313')
         with open(dts) as f:
             ct = 1
             total_aps = []
@@ -93,7 +93,7 @@ def detect():
                 cls = []
                 scores = []
                 for kk in range(len(p)):
-                    if sc[kk]>0.7:
+                    if sc[kk]>0.3:
                         bxx.append(bx[kk])
                         cls.append(p[kk])
                         scores.append(sc[kk])
@@ -113,6 +113,7 @@ def detect():
                                         pred_boxes=finbox,
                                         pred_class_ids=np.asarray(cls),
                                         pred_scores=np.asarray(scores))
+                    print(mAP)
                     total_aps.append(mAP)
 
                     print(sum(total_aps)/len(total_aps))
