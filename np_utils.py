@@ -109,12 +109,16 @@ def get_loc_conf(true_box, true_label,batch_size = 4,cfg = config.voc_vgg_300):
         best_true = np.max(ops, axis=0)
         best_true_idx = np.argmax(ops, axis=0)
 
+
         best_prior = np.max(ops, axis=1)
         best_prior_idx = np.argmax(ops, axis=1)
 
         for j in range(best_prior_idx.shape[0]):
             best_true_idx[best_prior_idx[j]] = j
 
+
+        print(labels)
+        print(true_box_tm)
         matches = true_box_tm[best_true_idx]
 
         conf = labels[best_true_idx] + 1

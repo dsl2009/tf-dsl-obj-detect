@@ -48,7 +48,7 @@ def train():
     def restore(sess):
         saver.restore(sess, '/home/dsl/all_check/inception_v3.ckpt')
 
-    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect/voc-v31', summary_op=None, init_fn=restore)
+    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect/voc-v32', summary_op=None, init_fn=restore)
 
     with sv.managed_session() as sess:
         for step in range(1000000000):
@@ -58,9 +58,10 @@ def train():
             loct, conft = np_utils.get_loc_conf(true_box, true_label, batch_size=config.batch_size,cfg=config.Config)
             feed_dict = {img: images, loc: loct,
                          conf: conft}
-
+            t = time.time()
             ls,step = sess.run([train_op,global_step], feed_dict=feed_dict)
             if step % 10 == 0:
+                print(time.time()-t)
                 summaries = sess.run(sum_op, feed_dict=feed_dict)
                 sv.summary_computed(sess, summaries)
                 print(ls)
@@ -74,7 +75,7 @@ def detect():
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/voc-v31/model.ckpt-105912')
+        saver.restore(sess, '/home/dsl/all_check/face_detect/tx/model.ckpt-12318.data-00000-of-00001')
         for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit/VOC2012/JPEGImages/*.jpg'):
             print(ip)
             img = cv2.imread(ip)

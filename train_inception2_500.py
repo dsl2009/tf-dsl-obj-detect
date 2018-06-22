@@ -37,7 +37,7 @@ def train():
     def restore(sess):
         saver.restore(sess, '/home/dsl/all_check/inception_v2.ckpt')
 
-    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect/voc-ince', summary_op=None, init_fn=restore)
+    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect/voc-1', summary_op=None, init_fn=restore)
 
     with sv.managed_session() as sess:
         for step in range(1000000000):
@@ -147,4 +147,4 @@ def video():
         out.release()
         cap.release()
         cv2.destroyAllWindows()
-detect()
+train()

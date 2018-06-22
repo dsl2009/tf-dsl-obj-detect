@@ -19,6 +19,10 @@ def inception_v2_ssd(img,cfg):
         cell_7 = tf.image.resize_bilinear(Mixed_4e,size=[64,64])
         cell_7 = tf.concat([cell_7,Mixed_3c],axis=3)
 
+
+
+
+
     cell_11 = slim.conv2d(cell_11,1024,kernel_size=1,activation_fn=slim.nn.relu)
 
     cell_7 = slim.conv2d(cell_7, 512, kernel_size=3, activation_fn=slim.nn.relu)

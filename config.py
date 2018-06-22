@@ -103,6 +103,6 @@ FACE_CLASSES = ['face']
 MAX_GT = 100
 batch_size = 8
 image_size = 512
-Config = voc_inceptionv3_dsl_500
+Config = voc_inceptionv2_dsl_500
 
 

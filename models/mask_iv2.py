@@ -22,14 +22,21 @@ def inception_v2_ssd(img,cfg):
         Mixed_3c = end_point['Mixed_3c']
         Mixed_4e = end_point['Mixed_4e']
         cell_11 = end_point['Mixed_5c']
-        vbs = slim.get_trainable_variables()
+        #vbs = slim.get_trainable_variables()
+        vbs = None
         cell_11 = tf.image.resize_bilinear(cell_11,size=[32,32])
         cell_11 = tf.concat([cell_11,Mixed_4e],axis=3)
 
         cell_7 = tf.image.resize_bilinear(Mixed_4e,size=[64,64])
         cell_7 = tf.concat([cell_7,Mixed_3c],axis=3)
 
+    mask_fp = slim.conv2d(cell_11, 512, kernel_size=1, stride=1)
+    mask_p7 = slim.conv2d(cell_7, 512, kernel_size=1, stride=1)
 
+    mask_fp = tf.image.resize_bilinear(mask_fp, size=[64, 64])
+
+    mask_fp = tf.concat([mask_fp, mask_p7], axis=3)
+    mask_fp = slim.conv2d(mask_fp, 512, kernel_size=3)
 
     cell_11 = slim.conv2d(cell_11,1024,kernel_size=1,activation_fn=slim.nn.relu)
 
@@ -50,14 +57,14 @@ def inception_v2_ssd(img,cfg):
     conf = []
     loc = []
     for cv, num in zip(source, cfg.Config['aspect_num']):
-        print(num)
+
         loc.append(slim.conv2d(cv, num * 4, kernel_size=3, stride=1, activation_fn=None))
 
         conf.append(
                 slim.conv2d(cv, num * cfg.Config['num_classes'], kernel_size=3, stride=1, activation_fn=None))
-        print(loc)
+
     loc = tf.concat([tf.reshape(o, shape=(cfg.batch_size, -1, 4)) for o in loc], axis=1)
     conf = tf.concat([tf.reshape(o, shape=(cfg.batch_size, -1, cfg.Config['num_classes'])) for o in conf],
                          axis=1)
 
-    return loc, conf, vbs
+    return loc, conf,mask_fp, vbs
