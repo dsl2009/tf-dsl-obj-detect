@@ -66,7 +66,7 @@ def detect():
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/voc-v3/model.ckpt-27313')
+        saver.restore(sess, '/home/dsl/all_check/face_detect/voc-v31/model.ckpt-105912')
         with open(dts) as f:
             ct = 1
             total_aps = []

@@ -74,7 +74,7 @@ def detect():
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/voc-v31/model.ckpt-14815')
+        saver.restore(sess, '/home/dsl/all_check/face_detect/voc-v31/model.ckpt-105912')
         for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit/VOC2012/JPEGImages/*.jpg'):
             print(ip)
             img = cv2.imread(ip)
