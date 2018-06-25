@@ -45,7 +45,21 @@ voc_inceptionv2_dsl_500 = {
     'clip': True,
     'name': 'VOC',
 }
-
+shape_inceptionv2_dsl_500 = {
+    'num_classes': 4,
+    'lr_steps': (80000, 100000, 120000),
+    'max_iter': 120000,
+    'feature_maps': [64, 32, 16, 8, 4, 2],
+    'min_dim': 512,
+    'steps': [8, 16, 32, 64, 128, 256],
+    'min_sizes': [32 , 64 ,128 ,192 ,300 ,412],
+    'max_sizes': [64, 128 ,192 ,300 ,412 ,556],
+    'aspect_ratios': [[2], [2, 3], [2, 3], [2, 3], [2], [2]],
+    'aspect_num':[4,6,6,6,4,4],
+    'variance': [0.1, 0.2],
+    'clip': True,
+    'name': 'VOC',
+}
 voc_inceptionv3_dsl_500 = {
     'num_classes': 21,
     'lr_steps': (80000, 100000, 120000),
@@ -103,6 +117,6 @@ FACE_CLASSES = ['face']
 MAX_GT = 100
 batch_size = 8
 image_size = 512
-Config = voc_inceptionv2_dsl_500
+Config = shape_inceptionv2_dsl_500
 
 

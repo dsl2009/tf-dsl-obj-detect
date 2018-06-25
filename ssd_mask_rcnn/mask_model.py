@@ -58,25 +58,57 @@ def build_fpn_mask_graph(rois, feature_maps,cfg):
     return x
 
 
-def mrcnn_mask_loss(target_masks, pred_masks):
+def mrcnn_mask_loss(target_masks, pred_masks,target_class):
     pred_masks = tf.transpose(pred_masks, [0, 3, 1, 2])
-    loss = tf.keras.backend.switch(tf.size(target_masks) > 0,
+    target_class = tf.cast(target_class,tf.int32)
+    ix = tf.concat([tf.reshape(tf.range(tf.shape(pred_masks)[0]),[-1,1]),tf.reshape(target_class,[-1,1])],axis=1)
+
+
+    pred_masks = tf.gather_nd(pred_masks,ix)
+    target_masks = tf.cast(target_masks,tf.float32)
+
+    loss = tf.keras.backend.switch(tf.cast(tf.size(target_masks) > 0,tf.bool),
                     tf.nn.sigmoid_cross_entropy_with_logits(labels=target_masks,logits=pred_masks),
                     tf.constant(0.0))
     loss = tf.reduce_mean(loss)
     return loss
 
-def get_loss(conf_t,loc_t,pred_loc, pred_confs,cfg):
+def get_loss(conf_t,loc_t,pred_loc, pred_confs,target_mask,mask_fp,cfg):
 
     anchor = utils.get_prio_box(cfg=cfg.Config)
-    anchor = tf.tile(anchor,multiples=[cfg.batch_size,1])
+    #anchor = tf.tile(anchor,multiples=[cfg.batch_size,1])
 
    # conf_t, loc_t = utils.batch_slice(inputs=[truth_box, gt_lables], graph_fn=loss_clc, batch_size=batch_size)
+    crop_boxs = []
+    target_class_ids = []
+    for b in range(cfg.batch_size):
+        tmp_conf_t = conf_t[b]
+        tmp_ped_loc = pred_loc[b]
+        tmp_conf_index = tf.where(tmp_conf_t > 0)[:, 0]
+        tmp_conf_t = tf.gather(tmp_conf_t,tmp_conf_index)
+
+        tmp_ped_loc = tf.gather(tmp_ped_loc,tmp_conf_index)
+        live_anchor = tf.gather(anchor, tmp_conf_index)
+        decode_box = utils.decode_box(live_anchor, tmp_ped_loc)
+        x1, y1, x2, y2 = tf.split(decode_box, 4, axis=1)
+
+        crop_box = tf.concat([y1, x1, y2, x2], axis=1)
+        crop_box = tf.clip_by_value(crop_box,0.0,1.0)
+        crop_boxs.append(crop_box)
+        tmp_conf_t = tf.expand_dims(tmp_conf_t,0)
+        target_class_ids.append(tmp_conf_t)
+    crop_boxs = tf.concat(crop_boxs,axis=0)
+    target_class_ids = tf.squeeze(tf.concat(target_class_ids,axis=1),axis=0)
+
+    pred_mask = build_fpn_mask_graph(crop_boxs,mask_fp,cfg)
+    mask_loss = mrcnn_mask_loss(target_mask,pred_mask,target_class_ids)
+
 
     conf_t = tf.reshape(conf_t,shape=(-1,))
     loc_t = tf.reshape(loc_t,shape=(-1,4))
 
     positive_roi_ix = tf.where(conf_t > 0)[:, 0]
+
 
     positive_roi_class_ids = tf.cast(
         tf.gather(conf_t, positive_roi_ix), tf.int64)
@@ -85,20 +117,8 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,cfg):
     pred_loc = tf.reshape(pred_loc,shape=(-1,4))
 
     # Gather the deltas (predicted and true) that contribute to loss
-
-
     target_bbox = tf.gather(loc_t, positive_roi_ix)
     pred_bbox = tf.gather(pred_loc, positive_roi_ix)
-    live_anchor = tf.gather(anchor, positive_roi_ix)
-
-    decode_box = utils.decode_box(live_anchor,pred_bbox)
-    x1,y1,x2,y2 = tf.split(decode_box,4,axis=1)
-
-    crop_box = tf.concat([y1,x1,y2,x2],axis=1)
-
-
-
-
     target_bbox = tf.cast(target_bbox,tf.float32)
     loss = tf.keras.backend.switch(tf.cast(tf.size(target_bbox) > 0,tf.bool),
                                    smooth_l1_loss(y_true=target_bbox, y_pred=pred_bbox),
@@ -142,6 +162,7 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,cfg):
 
         label = tf.gather(conf_t[s,:],ix)
         label = tf.cast(label,tf.int32)
+
         label = tf.one_hot(label,depth=cfg.Config['num_classes'])
         logits = tf.gather(pred_confs[s,:],ix)
 
@@ -168,19 +189,36 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,cfg):
     final_loss_c = final_loss_c
 
     tf.losses.add_loss(final_loss_c)
-
+    tf.losses.add_loss(mask_loss)
 
     tf.losses.add_loss(final_loss_l)
 
     total_loss = tf.losses.get_losses()
     tf.summary.scalar(name='class_loss',tensor=final_loss_c)
     tf.summary.scalar(name='loc_loss', tensor=final_loss_l)
-
-
+    tf.summary.scalar(name='mask_loss', tensor=mask_loss)
     train_tensors = tf.identity(total_loss, 'ss')
 
-
     return train_tensors
+
+def get_target_mask(true_box,true_mask,mask_t,cfg):
+    target_mask = []
+    for s in range(cfg.batch_size):
+        b = true_box[s,:,:]
+        m = true_mask[s,:,:,:]
+
+        mt = mask_t[s,:]
+
+
+        ix = tf.where(tf.reduce_sum(b,axis=1)>0)[:,0]
+        m = tf.gather(m,ix,axis=0)
+
+        tmp_mask_index = tf.where(mt > 0)[:, 0]
+        ix = tf.gather(mt,tmp_mask_index)-1
+        ix = tf.cast(ix,tf.int32)
+        m = tf.gather(m,ix)
+        target_mask.append(m)
+    return tf.concat(target_mask,axis=0)
 
 
 
@@ -215,17 +253,21 @@ def predict(ig,pred_loc, pred_confs, vbs,cfg):
 def eger(cfg):
     tf.enable_eager_execution()
 
-    gen = data_gen.get_batch(batch_size=cfg.batch_size,image_size=512)
+    gen = data_gen.get_batch_shapes(batch_size=cfg.batch_size,image_size=512)
 
 
-    images, true_box, true_label = next(gen)
+    images, true_box, true_label,true_mask = next(gen)
 
-    loct, conft = np_utils.get_loc_conf(true_box, true_label, batch_size=cfg.batch_size,cfg=cfg.Config)
-
-
-    pred_loc, pred_confs, mask,vbs = mask_iv2.inception_v2_ssd(images, config)
+    true_mask = tf.transpose(true_mask,[0,3,1,2])
 
 
-    get_loss(conft, loct, pred_loc, pred_confs, config)
-import config
-eger(config)
+
+    loct, conft, maskt = np_utils.get_loc_conf_mask(true_box, true_label, batch_size=cfg.batch_size,cfg=cfg.Config)
+
+
+
+    pred_loc, pred_confs, mask_fp,vbs = mask_iv2.inception_v2_ssd(images, cfg)
+
+    target_mask = get_target_mask(true_box,true_mask,maskt)
+
+    get_loss(conft, loct, pred_loc, pred_confs,target_mask,mask_fp, cfg)

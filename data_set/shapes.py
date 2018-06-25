@@ -4,7 +4,7 @@ import math
 import random
 import numpy as np
 import cv2
-
+import visual
 import utils
 
 def compute_iou(box, boxes, box_area, boxes_area):
@@ -106,7 +106,7 @@ def load_mask(shapes):
     """Generate instance masks for shapes of the given image ID.
     """
 
-    class_names = ['back',"square", "circle", "triangle"]
+    class_names = ["square", "circle", "triangle"]
 
     count = len(shapes)
     mask = np.zeros([512, 512, count], dtype=np.uint8)
@@ -188,15 +188,24 @@ def random_image(height=512, width=512):
     shapes = [s for i, s in enumerate(shapes) if i in keep_ixs]
     return bg_color, shapes
 
-bg, shpes = random_image(512,512)
-
-ig = load_image(bg_color=bg,shapes=shpes)
-msk, cls_id = load_mask(shpes)
-print(cls_id)
-print(msk.shape)
 
 
-from matplotlib import pyplot as plt
-plt.imshow(ig)
-plt.show()
+
+
+
+def get_image():
+    try:
+        bg, shpes = random_image(512, 512)
+        ig = load_image(bg_color=bg, shapes=shpes)
+        msk, cls_id = load_mask(shpes)
+        box = utils.extract_bboxes(msk)
+        mask = utils.minimize_mask(box, msk, mini_shape=(28, 28))
+        box = box/512.0
+        return ig,cls_id,box,mask
+    except:
+        return get_image()
+
+
+
+
 

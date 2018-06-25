@@ -22,8 +22,8 @@ def inception_v2_ssd(img,cfg):
         Mixed_3c = end_point['Mixed_3c']
         Mixed_4e = end_point['Mixed_4e']
         cell_11 = end_point['Mixed_5c']
-        #vbs = slim.get_trainable_variables()
-        vbs = None
+        vbs = slim.get_trainable_variables()
+        #vbs = None
         cell_11 = tf.image.resize_bilinear(cell_11,size=[32,32])
         cell_11 = tf.concat([cell_11,Mixed_4e],axis=3)
 
@@ -46,7 +46,7 @@ def inception_v2_ssd(img,cfg):
     cv6 = slim.conv2d(cell_11, 1024, kernel_size=3, rate=6, activation_fn=slim.nn.relu, scope='conv6')
     cv7 = slim.conv2d(cv6, 1024, kernel_size=1, activation_fn=slim.nn.relu, scope='conv7')
 
-    s = utils.normalize_to_target(cell_7, target_norm_value=8.0, dim=1)
+    s = utils.normalize_to_target(cell_7, target_norm_value=12.0, dim=1)
 
     cv8 = inception(cv7, out_put=512, name='cv8', stride=2)
     cv9 = inception(cv8, out_put=256, name='cv9', stride=2)

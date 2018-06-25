@@ -63,7 +63,7 @@ def detect():
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/voc-aug/model.ckpt-91518')
+        saver.restore(sess, '/home/dsl/all_check/face_detect/tx/model.ckpt-29518')
         for ip in glob.glob('/home/dsl/ssd300_pascalVOC_pred_04.png'):
             print(ip)
             img = cv2.imread(ip)
@@ -147,4 +147,4 @@ def video():
         out.release()
         cap.release()
         cv2.destroyAllWindows()
-train()
+detect()

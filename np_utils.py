@@ -101,9 +101,15 @@ def get_loc_conf(true_box, true_label,batch_size = 4,cfg = config.voc_vgg_300):
     for s in range(batch_size):
         true_box_tm = true_box[s]
         labels = true_label[s]
+
+
         ix = np.sum(true_box_tm, axis=1)
         true_box_tm = true_box_tm[np.where(ix > 0)]
         labels = labels[np.where(ix > 0)]
+
+
+
+
 
         ops = over_laps(true_box_tm, pt_from(pri))
         best_true = np.max(ops, axis=0)
@@ -117,13 +123,18 @@ def get_loc_conf(true_box, true_label,batch_size = 4,cfg = config.voc_vgg_300):
             best_true_idx[best_prior_idx[j]] = j
 
 
-        print(labels)
-        print(true_box_tm)
+
+
         matches = true_box_tm[best_true_idx]
+
 
         conf = labels[best_true_idx] + 1
 
+
         conf[best_true < 0.5] = 0
+
+
+
 
         loc = encode(matches, pri, variances=[0.1, 0.2])
         loc_t[s] = loc
@@ -134,6 +145,57 @@ def get_loc_conf(true_box, true_label,batch_size = 4,cfg = config.voc_vgg_300):
 
 
 
+def get_loc_conf_mask(true_box, true_label,batch_size = 4,cfg = config.voc_vgg_300):
+
+    pri = get_prio_box(cfg = cfg)
+    num_priors = pri.shape[0]
+    loc_t = np.zeros([batch_size, num_priors, 4])
+    conf_t = np.zeros([batch_size, num_priors])
+    mask_index = np.zeros([batch_size,num_priors])
+    for s in range(batch_size):
+        true_box_tm = true_box[s]
+        labels = true_label[s]
+
+
+
+        ix = np.sum(true_box_tm, axis=1)
+        true_box_tm = true_box_tm[np.where(ix > 0)]
+        labels = labels[np.where(ix > 0)]
+
+        mask_ix = np.asarray(np.arange(0, labels.shape[0]))
+
+
+
+        ops = over_laps(true_box_tm, pt_from(pri))
+        best_true = np.max(ops, axis=0)
+        best_true_idx = np.argmax(ops, axis=0)
+
+
+        best_prior = np.max(ops, axis=1)
+        best_prior_idx = np.argmax(ops, axis=1)
+
+        for j in range(best_prior_idx.shape[0]):
+            best_true_idx[best_prior_idx[j]] = j
+
+
+
+
+        matches = true_box_tm[best_true_idx]
+        mask_t = mask_ix[best_true_idx]+1
+
+        conf = labels[best_true_idx] + 1
+
+
+        conf[best_true < 0.5] = 0
+
+        mask_t[best_true < 0.5] = 0
+
+
+        loc = encode(matches, pri, variances=[0.1, 0.2])
+        loc_t[s] = loc
+        conf_t[s] = conf
+        mask_index[s] = mask_t
+    return loc_t,conf_t,mask_index
 
 
 
