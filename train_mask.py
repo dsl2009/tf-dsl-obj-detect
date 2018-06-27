@@ -70,6 +70,7 @@ def train():
 
             if step % 10 == 0:
                 tt = time.time() - t
+                print(data_true_label)
 
                 print('step:'+str(step)+
                       ' '+'class_loss:'+str(ls[0])+
@@ -140,4 +141,4 @@ def detect():
                 visual.display_instances_title(org,np.asarray(bxx)*512,class_ids=np.asarray(cls),
                                                class_names=["square", "circle", "triangle"],scores=scores)
 
-detect()
+train()

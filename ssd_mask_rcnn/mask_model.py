@@ -102,6 +102,7 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,target_mask,mask_fp,cfg):
 
     pred_mask = build_fpn_mask_graph(crop_boxs,mask_fp,cfg.Config)
     mask_loss = mrcnn_mask_loss(target_mask,pred_mask,target_class_ids)
+    mask_loss = mask_loss*2.0
 
 
     conf_t = tf.reshape(conf_t,shape=(-1,))

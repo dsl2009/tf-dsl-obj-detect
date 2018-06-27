@@ -13,6 +13,7 @@ import numpy as np
 import visual
 from matplotlib import pyplot as plt
 import cv2
+import glob
 def train():
     img = tf.placeholder(shape=[config.batch_size, config.Config['min_dim'], config.Config['min_dim'], 3], dtype=tf.float32)
     anchors_num = sum(
@@ -36,7 +37,7 @@ def train():
     lr = tf.train.exponential_decay(
         learning_rate=0.001,
         global_step=global_step,
-        decay_steps=10000,
+        decay_steps=20000,
         decay_rate=0.7,
         staircase=True)
     tf.summary.scalar('lr', lr)
@@ -70,7 +71,7 @@ def train():
 
             if step % 10 == 0:
                 tt = time.time() - t
-
+                print(data_true_label)
                 print('step:'+str(step)+
                       ' '+'class_loss:'+str(ls[0])+
                       ' '+'loc_loss:'+str(ls[1])+
@@ -89,9 +90,10 @@ def detect():
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/mask3/model.ckpt-19234')
-        for ip in range(100):
-            img, cls_id, _, _ = shapes.get_image()
+        saver.restore(sess, '/home/dsl/all_check/face_detect/coco/model.ckpt-2323')
+        for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/coco/raw-data/val2014/*.jpg'):
+            img = cv2.imread(ip)
+            img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
 
             org, window, scale, padding, crop = utils.resize_image(img, min_dim=512, max_dim=512)
 
@@ -105,8 +107,10 @@ def detect():
             cls = []
             scores = []
             imgs = []
+            print(p)
             for s in range(len(p)):
-                if sc[s]>0.5:
+
+                if sc[s]>0.2:
                     bxx.append(bx[s])
                     cls.append(p[s])
                     scores.append(sc[s])
@@ -120,24 +124,22 @@ def detect():
                     #igs[np.where(igs <= 0.2)] = 0
                     zer_ig[bxes[1]:bxes[3],bxes[0]:bxes[2]] = igs
                     imgs.append(zer_ig)
-                    #plt.imshow(zer_ig)
+                    plt.imshow(zer_ig)
                     #plt.show()
-
-            imgs = np.asarray(imgs)
-
-            imgs = np.sum(imgs,axis=0)
-            imgs = imgs*255.0
-            imgs[np.where(igs > 255)] = 255
-            #imgs[np.where(igs <= 100)] = 0
-            imgs = np.asarray(imgs,np.int)
-
-            #imgs = np.clip(imgs,0,1)
-            plt.imshow(imgs,cmap='gray')
-            plt.show()
-
             if len(bxx) > 0:
+                imgs = np.asarray(imgs)
+
+                imgs = np.sum(imgs, axis=0)
+                #imgs = imgs * 255.0
+
+                # imgs[np.where(igs <= 100)] = 0
+                #imgs = np.asarray(imgs, np.int)
+                #imgs[np.where(imgs > 255)] = 255
+                # imgs = np.clip(imgs,0,1)
+                plt.imshow(imgs, cmap='gray')
+                plt.show()
                 #visual.display_instances(org,np.asarray(bxx)*300)
                 visual.display_instances_title(org,np.asarray(bxx)*512,class_ids=np.asarray(cls),
-                                               class_names=["square", "circle", "triangle"],scores=scores)
+                                               class_names=config.COCO_CLASSES,scores=scores)
 
-train()
+detect()
