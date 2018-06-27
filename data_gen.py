@@ -9,8 +9,8 @@ data_set = VOCDetection('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevk
 from data_set.augmentations import SSDAugmentation
 from data_set.shapes import get_image
 #data_set = face.Face(root='/home/dsl/PycharmProjects/tf-ssd/data_set/face1.json',image_size=512)
-
-
+from pycocotools.coco import COCO
+from data_set.coco import get_image as get_coco_image
 
 
 def get_batch(batch_size,is_shuff = True,max_detect = 50,image_size=300):
@@ -122,7 +122,7 @@ def get_batch_shapes(batch_size,is_shuff = True,max_detect = 50,image_size=512):
             #img = (img.astype(np.float32) - np.array([123.7, 116.8, 103.9]))/255
             if b== 0:
                 images = np.zeros(shape=[batch_size,image_size,image_size,3],dtype=np.float32)
-                masks = np.zeros(shape=[batch_size, 28, 28,max_detect], dtype=np.int)
+                masks = np.zeros(shape=[batch_size, 56, 56,max_detect], dtype=np.int)
                 boxs = np.zeros(shape=[batch_size,max_detect,4],dtype=np.float32)
                 label = np.zeros(shape=[batch_size,max_detect],dtype=np.int32)
                 images[b,:,:,:] = img
@@ -142,5 +142,60 @@ def get_batch_shapes(batch_size,is_shuff = True,max_detect = 50,image_size=512):
             if b>=batch_size:
                 yield [images,boxs,label,masks]
                 b = 0
+
+
+
+def get_coco(batch_size,is_shuff = True,max_detect = 50,image_size=512):
+    coco = COCO('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/coco/raw-data/annotations'
+                '/instances_train2014.json')
+    class_ids = sorted(coco.getCatIds())
+
+    image_ids = list(coco.imgs.keys())
+    map_source_class_id = dict(zip(class_ids, range(len(class_ids))))
+    length = len(image_ids)
+    idx = list(range(length))
+    b = 0
+    index = 0
+    while True:
+        if True:
+            if is_shuff and index==0:
+                random.shuffle(idx)
+            try:
+                img, lab, box, mask = get_coco_image(coco,map_source_class_id,class_ids,image_ids[idx[index]])
+            except:
+                index = index+1
+                continue
+
+
+            img = img/255.0
+            img = img - 0.5
+            img = img * 2.0
+            #img = (img.astype(np.float32) - np.array([123.7, 116.8, 103.9]))/255
+            if b== 0:
+                images = np.zeros(shape=[batch_size,image_size,image_size,3],dtype=np.float32)
+                masks = np.zeros(shape=[batch_size, 28, 28,max_detect], dtype=np.int)
+                boxs = np.zeros(shape=[batch_size,max_detect,4],dtype=np.float32)
+                label = np.zeros(shape=[batch_size,max_detect],dtype=np.int32)
+                images[b,:,:,:] = img
+                boxs[b,:box.shape[0],:] = box
+                label[b,:box.shape[0]] = lab
+                masks[b, :, :,:box.shape[0]] = mask
+                b=b+1
+                index = index + 1
+
+            else:
+                images[b, :, :, :] = img
+                boxs[b, :box.shape[0], :] = box
+                label[b, :box.shape[0]] = lab
+                masks[b, :, :, :box.shape[0]] = mask
+                b = b + 1
+                index = index + 1
+
+            if b>=batch_size:
+                yield [images,boxs,label,masks]
+                b = 0
+
+            if index>= length:
+                index = 0
 
 

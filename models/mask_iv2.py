@@ -11,9 +11,19 @@ def inception(cv,out_put,name,stride):
         c1 = slim.conv2d(cv8,out_put/4,kernel_size=1,stride=stride)
         c2 = slim.conv2d(cv8, out_put/4, kernel_size=3, stride=stride)
         c3 = slim.conv2d(cv8, out_put/4, kernel_size=5, stride=stride)
+        c = tf.concat([c1,c2,c3],axis=3)
+        c = slim.conv2d(c,out_put/2,1,1)
 
-    return tf.concat([c1,c2,c3],axis=3)
+    return c
 
+def get_mask_fp(Mixed_3c ,Mixed_4e,Mixed_5c):
+    x = slim.conv2d_transpose(Mixed_5c,256,kernel_size=2,stride=2)
+    x = tf.concat([x,Mixed_4e],axis=3)
+    x = slim.conv2d(x,512,1,1)
+    x = slim.conv2d_transpose(x,256,kernel_size=2,stride=2)
+    x = tf.concat([x, Mixed_3c], axis=3)
+    x = slim.conv2d(x, 256, 1, 1)
+    return x
 
 def inception_v2_ssd(img,cfg):
     with slim.arg_scope(inception_v2.inception_v2_arg_scope()):
@@ -21,22 +31,17 @@ def inception_v2_ssd(img,cfg):
 
         Mixed_3c = end_point['Mixed_3c']
         Mixed_4e = end_point['Mixed_4e']
-        cell_11 = end_point['Mixed_5c']
+        Mixed_5c = end_point['Mixed_5c']
         vbs = slim.get_trainable_variables()
         #vbs = None
-        cell_11 = tf.image.resize_bilinear(cell_11,size=[32,32])
+        cell_11 = tf.image.resize_bilinear(Mixed_5c,size=[32,32])
         cell_11 = tf.concat([cell_11,Mixed_4e],axis=3)
 
         cell_7 = tf.image.resize_bilinear(Mixed_4e,size=[64,64])
         cell_7 = tf.concat([cell_7,Mixed_3c],axis=3)
 
-    mask_fp = slim.conv2d(cell_11, 512, kernel_size=1, stride=1)
-    mask_p7 = slim.conv2d(cell_7, 512, kernel_size=1, stride=1)
 
-    mask_fp = tf.image.resize_bilinear(mask_fp, size=[64, 64])
-
-    mask_fp = tf.concat([mask_fp, mask_p7], axis=3)
-    mask_fp = slim.conv2d(mask_fp, 512, kernel_size=3)
+    mask_fp = get_mask_fp(Mixed_3c ,Mixed_4e,Mixed_5c)
 
     cell_11 = slim.conv2d(cell_11,1024,kernel_size=1,activation_fn=slim.nn.relu)
 
@@ -46,7 +51,7 @@ def inception_v2_ssd(img,cfg):
     cv6 = slim.conv2d(cell_11, 1024, kernel_size=3, rate=6, activation_fn=slim.nn.relu, scope='conv6')
     cv7 = slim.conv2d(cv6, 1024, kernel_size=1, activation_fn=slim.nn.relu, scope='conv7')
 
-    s = utils.normalize_to_target(cell_7, target_norm_value=12.0, dim=1)
+    s = utils.normalize_to_target(cell_7, target_norm_value=20.0, dim=1)
 
     cv8 = inception(cv7, out_put=512, name='cv8', stride=2)
     cv9 = inception(cv8, out_put=256, name='cv9', stride=2)

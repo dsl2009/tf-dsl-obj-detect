@@ -177,9 +177,6 @@ def get_loc_conf_mask(true_box, true_label,batch_size = 4,cfg = config.voc_vgg_3
         for j in range(best_prior_idx.shape[0]):
             best_true_idx[best_prior_idx[j]] = j
 
-
-
-
         matches = true_box_tm[best_true_idx]
         mask_t = mask_ix[best_true_idx]+1
 

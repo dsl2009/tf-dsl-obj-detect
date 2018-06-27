@@ -1,5 +1,5 @@
 
-
+from matplotlib import pyplot as plt
 import math
 import random
 import numpy as np
@@ -199,12 +199,22 @@ def get_image():
         ig = load_image(bg_color=bg, shapes=shpes)
         msk, cls_id = load_mask(shpes)
         box = utils.extract_bboxes(msk)
-        mask = utils.minimize_mask(box, msk, mini_shape=(28, 28))
+        mask = utils.minimize_mask(box, msk, mini_shape=(56, 56))
         box = box/512.0
         return ig,cls_id,box,mask
     except:
         return get_image()
 
+
+def tt():
+
+    ig, cls_id, box, mask = get_image()
+    for ix,idx in enumerate(cls_id):
+        print(idx)
+        ig = np.asarray(mask[:,:,ix],np.float)
+        print(ig)
+        plt.imshow(ig)
+        plt.show()
 
 
 

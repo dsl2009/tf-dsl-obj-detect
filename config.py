@@ -46,7 +46,7 @@ voc_inceptionv2_dsl_500 = {
     'name': 'VOC',
 }
 shape_inceptionv2_dsl_500 = {
-    'num_classes': 4,
+    'num_classes': 81,
     'lr_steps': (80000, 100000, 120000),
     'max_iter': 120000,
     'feature_maps': [64, 32, 16, 8, 4, 2],
@@ -115,8 +115,9 @@ VOC_CLASSES = (
     'sheep', 'sofa', 'train', 'tvmonitor')
 FACE_CLASSES = ['face']
 MAX_GT = 100
-batch_size = 8
+batch_size = 4
 image_size = 512
+mask_pool_shape = 14
 Config = shape_inceptionv2_dsl_500
 
 

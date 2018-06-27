@@ -8,7 +8,7 @@ import numpy as np
 import np_utils
 import visual
 import time
-import glob
+from parm import parm_args
 from models import mask_iv2
 
 def loss_clc(truth_box,gt_lables):
@@ -50,11 +50,10 @@ def build_fpn_mask_graph(rois, feature_maps,cfg):
 
     ind = tf.zeros(shape=(tf.shape(rois)[0]),dtype=tf.int32)
     x = tf.image.crop_and_resize(feature_maps,rois,ind,crop_size=[14,14])
-
-
-    x = slim.repeat(x,4,slim.conv2d,256,3)
+    with slim.arg_scope(parm_args.un_conv_args()):
+        x = slim.repeat(x,4,slim.conv2d,256,3)
     x = slim.conv2d_transpose(x,256,kernel_size=2,stride=2,activation_fn=slim.nn.relu)
-    x = slim.conv2d(x,cfg.Config['num_classes'],1,1,activation_fn=slim.nn.sigmoid)
+    x = slim.conv2d(x,cfg['num_classes'],1,1,activation_fn=slim.nn.sigmoid)
     return x
 
 
@@ -97,10 +96,11 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,target_mask,mask_fp,cfg):
         crop_boxs.append(crop_box)
         tmp_conf_t = tf.expand_dims(tmp_conf_t,0)
         target_class_ids.append(tmp_conf_t)
+
     crop_boxs = tf.concat(crop_boxs,axis=0)
     target_class_ids = tf.squeeze(tf.concat(target_class_ids,axis=1),axis=0)
 
-    pred_mask = build_fpn_mask_graph(crop_boxs,mask_fp,cfg)
+    pred_mask = build_fpn_mask_graph(crop_boxs,mask_fp,cfg.Config)
     mask_loss = mrcnn_mask_loss(target_mask,pred_mask,target_class_ids)
 
 
@@ -189,9 +189,10 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,target_mask,mask_fp,cfg):
     final_loss_c = final_loss_c
 
     tf.losses.add_loss(final_loss_c)
+    tf.losses.add_loss(final_loss_l)
     tf.losses.add_loss(mask_loss)
 
-    tf.losses.add_loss(final_loss_l)
+
 
     total_loss = tf.losses.get_losses()
     tf.summary.scalar(name='class_loss',tensor=final_loss_c)
@@ -222,7 +223,7 @@ def get_target_mask(true_box,true_mask,mask_t,cfg):
 
 
 
-def predict(ig,pred_loc, pred_confs, vbs,cfg):
+def predict(pred_loc, pred_confs,mask_fp, cfg):
 
     priors = utils.get_prio_box(cfg=cfg)
 
@@ -238,15 +239,34 @@ def predict(ig,pred_loc, pred_confs, vbs,cfg):
     score = tf.gather(pp,ix)
     box = tf.gather(box,ix)
     cls = tf.gather(cls, ix)
+    cls = tf.cast(cls,tf.int32)
     box = tf.clip_by_value(box,clip_value_min=0.0,clip_value_max=1.0)
+
+    x1, y1, x2, y2 = tf.split(box, 4, axis=1)
+
+    crop_box = tf.concat([y1, x1, y2, x2], axis=1)
 
     keep = tf.image.non_max_suppression(
         scores=score,
-        boxes=box,
+        boxes=crop_box,
         iou_threshold=0.5,
         max_output_size=50
     )
-    return tf.gather(box,keep),tf.gather(score,keep),tf.gather(cls,keep)
+
+    cls = tf.gather(cls, keep)
+    box = tf.gather(crop_box, keep)
+    masks = build_fpn_mask_graph(box,mask_fp,cfg)
+    masks = tf.transpose(masks, [0, 3, 1, 2])
+
+    ix = tf.concat([tf.reshape(tf.range(tf.shape(masks)[0]), [-1, 1]), tf.reshape(cls, [-1, 1])+1], axis=1)
+
+    pred_masks = tf.gather_nd(masks, ix)
+    y1, x1, y2, x2 = tf.split(box, 4, axis=1)
+
+    crop_box = tf.concat([x1, y1, x2, y2], axis=1)
+
+
+    return crop_box,tf.gather(score,keep),cls,pred_masks
 
 
 

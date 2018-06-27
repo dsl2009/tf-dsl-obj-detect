@@ -6,6 +6,7 @@ import numpy as np
 import random
 import cv2
 from skimage import transform
+from scipy import ndimage
 def normalize_to_target(inputs,
                         target_norm_value,
                         dim,
@@ -382,3 +383,26 @@ def minimize_mask(bbox, mask, mini_shape):
         m = transform.resize(m, mini_shape, order=1, mode="constant")
         mini_mask[:, :, i] = np.around(m).astype(np.bool)
     return mini_mask
+
+
+def resize_mask(mask, scale, padding, crop=None):
+    """Resizes a mask using the given scale and padding.
+    Typically, you get the scale and padding from resize_image() to
+    ensure both, the image and the mask, are resized consistently.
+
+    scale: mask scaling factor
+    padding: Padding to add to the mask in the form
+            [(top, bottom), (left, right), (0, 0)]
+    """
+    # Suppress warning from scipy 0.13.0, the output shape of zoom() is
+    # calculated with round() instead of int()
+
+
+    mask = ndimage.zoom(mask, zoom=[scale, scale, 1], order=0)
+
+    if crop is not None:
+        y, x, h, w = crop
+        mask = mask[y:y + h, x:x + w]
+    else:
+        mask = np.pad(mask, padding, mode='constant', constant_values=0)
+    return mask

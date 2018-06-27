@@ -20,11 +20,11 @@ def train():
 
     input_loc_t = tf.placeholder(shape=[config.batch_size, anchors_num, 4], dtype=tf.float32)
     input_conf_t = tf.placeholder(shape=[config.batch_size, anchors_num], dtype=tf.float32)
-    input_gt_mask = tf.placeholder(shape=[config.batch_size, 56,56,50],dtype=tf.int32)
-    input_gt_box = tf.placeholder(shape=[config.batch_size, 50, 4],dtype=tf.float32)
+    input_gt_mask = tf.placeholder(shape=[config.batch_size, 28,28,100],dtype=tf.int32)
+    input_gt_box = tf.placeholder(shape=[config.batch_size, 100, 4],dtype=tf.float32)
     input_mask_index = tf.placeholder(shape=[config.batch_size, anchors_num],dtype=tf.int32)
 
-    gen = data_gen.get_batch_shapes(batch_size=config.batch_size, image_size=512)
+    gen = data_gen.get_coco(batch_size=config.batch_size, max_detect=100,image_size=512)
 
     input_gt_mask_trans = tf.transpose(input_gt_mask,[0,3,1,2])
     pred_loc, pred_confs, mask_fp, vbs = mask_iv2.inception_v2_ssd(img, config)
@@ -50,7 +50,7 @@ def train():
     def restore(sess):
         saver.restore(sess, '/home/dsl/all_check/inception_v2.ckpt')
 
-    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect/mask3', summary_op=None, init_fn=restore)
+    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect/coco', summary_op=None, init_fn=restore)
 
     with sv.managed_session() as sess:
         for step in range(1000000000):
@@ -140,4 +140,4 @@ def detect():
                 visual.display_instances_title(org,np.asarray(bxx)*512,class_ids=np.asarray(cls),
                                                class_names=["square", "circle", "triangle"],scores=scores)
 
-detect()
+train()
