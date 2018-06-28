@@ -141,7 +141,7 @@ def display_instances_title(image, boxes,  class_ids, class_names,
         else:
             caption = captions[i]
         ax.text(x1, y1 + 8, caption,
-                color='w', size=11, backgroundcolor="none")
+                color='w', size=11, backgroundcolor="black")
 
 
     ax.imshow(masked_image.astype(np.uint8))

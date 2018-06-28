@@ -85,6 +85,7 @@ def normalize_to_target(inputs,
 
 
 def get_prio_box(cfg = config.voc_vgg_300):
+
     mean = []
     for k, f in enumerate(cfg['feature_maps']):
         for i, j in product(range(f), repeat=2):

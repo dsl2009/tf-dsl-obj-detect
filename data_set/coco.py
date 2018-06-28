@@ -36,7 +36,7 @@ def annToMask( ann, height, width):
 
 
 
-def get_image(coco,map_source_class_id,class_ids,i):
+def get_image(coco,map_source_class_id,class_ids,i,mask_shape,image_size):
     annotations = coco.loadAnns(coco.getAnnIds(imgIds=[i], catIds=class_ids, iscrowd=False))
     img_url = os.path.join('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/coco/raw-data/train2014',
                            coco.imgs[i]["file_name"])
@@ -60,20 +60,46 @@ def get_image(coco,map_source_class_id,class_ids,i):
     cls_ids = np.asarray(cls_ids)
     original_shape = img.shape
 
-    image, window, scale, padding, crop = utils.resize_image(img,min_dim=512,max_dim=512)
+    image, window, scale, padding, crop = utils.resize_image(img,min_dim=image_size,max_dim=image_size)
     mask = np.asarray(instance_masks)
 
     mask = np.transpose(mask,axes=[1,2,0])
     mask = utils.resize_mask(mask, scale, padding, crop)
+    image,mask = aug(image,mask)
+
     boxes = utils.extract_bboxes(mask)
-    mask = utils.minimize_mask(boxes, mask, mini_shape=(28, 28))
-    boxes = boxes / 512.0
+    mask = utils.minimize_mask(boxes, mask, mini_shape=(mask_shape, mask_shape))
+    boxes = boxes*1.0 / image_size
     return image,cls_ids,boxes,mask
 
 
 
+def aug(image,mask):
+    augmentation = imgaug.augmenters.Fliplr(0.5)
+
+    MASK_AUGMENTERS = ["Sequential", "SomeOf", "OneOf", "Sometimes",
+                       "Fliplr", "Flipud", "CropAndPad",
+                       "Affine", "PiecewiseAffine"]
+
+    def hook(images, augmenter, parents, default):
+
+        return (augmenter.__class__.__name__ in MASK_AUGMENTERS)
 
 
+    image_shape = image.shape
+    mask_shape = mask.shape
+
+    det = augmentation.to_deterministic()
+    image = det.augment_image(image)
+
+    mask = det.augment_image(mask.astype(np.uint8),
+                             hooks=imgaug.HooksImages(activator=hook))
+
+    assert image.shape == image_shape, "Augmentation shouldn't change image size"
+    assert mask.shape == mask_shape, "Augmentation shouldn't change mask size"
+
+    mask = mask.astype(np.bool)
+    return image,mask
 
 
 

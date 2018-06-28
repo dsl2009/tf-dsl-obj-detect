@@ -34,10 +34,10 @@ def inception_v2_ssd(img,cfg):
         Mixed_5c = end_point['Mixed_5c']
         vbs = slim.get_trainable_variables()
         #vbs = None
-        cell_11 = tf.image.resize_bilinear(Mixed_5c,size=[32,32])
+        cell_11 = tf.image.resize_bilinear(Mixed_5c,size=[int(32*(cfg.image_size/512)),int(32*(cfg.image_size/512))])
         cell_11 = tf.concat([cell_11,Mixed_4e],axis=3)
 
-        cell_7 = tf.image.resize_bilinear(Mixed_4e,size=[64,64])
+        cell_7 = tf.image.resize_bilinear(Mixed_4e,size=[int(64*(cfg.image_size/512)),int(64*(cfg.image_size/512))])
         cell_7 = tf.concat([cell_7,Mixed_3c],axis=3)
 
 
@@ -51,7 +51,7 @@ def inception_v2_ssd(img,cfg):
     cv6 = slim.conv2d(cell_11, 1024, kernel_size=3, rate=6, activation_fn=slim.nn.relu, scope='conv6')
     cv7 = slim.conv2d(cv6, 1024, kernel_size=1, activation_fn=slim.nn.relu, scope='conv7')
 
-    s = utils.normalize_to_target(cell_7, target_norm_value=8.0, dim=1)
+    s = utils.normalize_to_target(cell_7, target_norm_value=cfg.norm_value, dim=1)
 
     cv8 = inception(cv7, out_put=512, name='cv8', stride=2)
     cv9 = inception(cv8, out_put=256, name='cv9', stride=2)

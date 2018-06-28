@@ -49,11 +49,11 @@ def log_sum(x):
 def build_fpn_mask_graph(rois, feature_maps,cfg):
 
     ind = tf.zeros(shape=(tf.shape(rois)[0]),dtype=tf.int32)
-    x = tf.image.crop_and_resize(feature_maps,rois,ind,crop_size=[14,14])
+    x = tf.image.crop_and_resize(feature_maps,rois,ind,crop_size=[cfg.mask_pool_shape,cfg.mask_pool_shape])
     with slim.arg_scope(parm_args.un_conv_args()):
         x = slim.repeat(x,4,slim.conv2d,256,3)
     x = slim.conv2d_transpose(x,256,kernel_size=2,stride=2,activation_fn=slim.nn.relu)
-    x = slim.conv2d(x,cfg['num_classes'],1,1,activation_fn=slim.nn.sigmoid)
+    x = slim.conv2d(x,cfg.Config['num_classes'],1,1,activation_fn=slim.nn.sigmoid)
     return x
 
 
@@ -65,6 +65,8 @@ def mrcnn_mask_loss(target_masks, pred_masks,target_class):
 
     pred_masks = tf.gather_nd(pred_masks,ix)
     target_masks = tf.cast(target_masks,tf.float32)
+    tf.summary.image('target_mask',tf.expand_dims(target_masks,-1))
+    tf.summary.image('pred_masks', tf.expand_dims(pred_masks,-1))
 
     loss = tf.keras.backend.switch(tf.cast(tf.size(target_masks) > 0,tf.bool),
                     tf.nn.sigmoid_cross_entropy_with_logits(labels=target_masks,logits=pred_masks),
@@ -82,7 +84,8 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,target_mask,mask_fp,cfg):
     target_class_ids = []
     for b in range(cfg.batch_size):
         tmp_conf_t = conf_t[b]
-        tmp_ped_loc = pred_loc[b]
+        #tmp_ped_loc = pred_loc[b]
+        tmp_ped_loc = loc_t[b]
         tmp_conf_index = tf.where(tmp_conf_t > 0)[:, 0]
         tmp_conf_t = tf.gather(tmp_conf_t,tmp_conf_index)
 
@@ -100,9 +103,9 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,target_mask,mask_fp,cfg):
     crop_boxs = tf.concat(crop_boxs,axis=0)
     target_class_ids = tf.squeeze(tf.concat(target_class_ids,axis=1),axis=0)
 
-    pred_mask = build_fpn_mask_graph(crop_boxs,mask_fp,cfg.Config)
+    pred_mask = build_fpn_mask_graph(crop_boxs,mask_fp,cfg)
     mask_loss = mrcnn_mask_loss(target_mask,pred_mask,target_class_ids)
-    mask_loss = mask_loss*2.0
+    mask_loss = mask_loss*cfg.mask_weight_loss
 
 
     conf_t = tf.reshape(conf_t,shape=(-1,))
@@ -226,7 +229,7 @@ def get_target_mask(true_box,true_mask,mask_t,cfg):
 
 def predict(pred_loc, pred_confs,mask_fp, cfg):
 
-    priors = utils.get_prio_box(cfg=cfg)
+    priors = utils.get_prio_box(cfg=cfg.Config)
 
     box = utils.decode_box(prios=priors, pred_loc=pred_loc[0])
     props = slim.nn.softmax(pred_confs[0])

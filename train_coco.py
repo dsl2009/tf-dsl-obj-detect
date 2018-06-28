@@ -15,17 +15,18 @@ from matplotlib import pyplot as plt
 import cv2
 import glob
 def train():
-    img = tf.placeholder(shape=[config.batch_size, config.Config['min_dim'], config.Config['min_dim'], 3], dtype=tf.float32)
+    img = tf.placeholder(shape=[config.batch_size, config.image_size, config.image_size, 3], dtype=tf.float32)
     anchors_num = sum(
         [config.Config['feature_maps'][s] ** 2 * config.Config['aspect_num'][s] for s in range(6)])
 
     input_loc_t = tf.placeholder(shape=[config.batch_size, anchors_num, 4], dtype=tf.float32)
     input_conf_t = tf.placeholder(shape=[config.batch_size, anchors_num], dtype=tf.float32)
-    input_gt_mask = tf.placeholder(shape=[config.batch_size, 28,28,100],dtype=tf.int32)
+    input_gt_mask = tf.placeholder(shape=[config.batch_size, config.mask_pool_shape*2,config.mask_pool_shape*2,100],dtype=tf.int32)
     input_gt_box = tf.placeholder(shape=[config.batch_size, 100, 4],dtype=tf.float32)
     input_mask_index = tf.placeholder(shape=[config.batch_size, anchors_num],dtype=tf.int32)
 
-    gen = data_gen.get_coco(batch_size=config.batch_size, max_detect=100,image_size=512)
+    gen = data_gen.get_coco(batch_size=config.batch_size, max_detect=100,image_size=config.image_size,
+                            mask_shape=config.mask_pool_shape*2)
 
     input_gt_mask_trans = tf.transpose(input_gt_mask,[0,3,1,2])
     pred_loc, pred_confs, mask_fp, vbs = mask_iv2.inception_v2_ssd(img, config)
@@ -37,7 +38,7 @@ def train():
     lr = tf.train.exponential_decay(
         learning_rate=0.001,
         global_step=global_step,
-        decay_steps=20000,
+        decay_steps=80000,
         decay_rate=0.7,
         staircase=True)
     tf.summary.scalar('lr', lr)
@@ -51,7 +52,7 @@ def train():
     def restore(sess):
         saver.restore(sess, '/home/dsl/all_check/inception_v2.ckpt')
 
-    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect/coco', summary_op=None, init_fn=restore)
+    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect/coco-768', summary_op=None, init_fn=restore)
 
     with sv.managed_session() as sess:
         for step in range(1000000000):
@@ -84,14 +85,14 @@ def detect():
     config.batch_size = 1
     ig = tf.placeholder(shape=(1, 512, 512, 3), dtype=tf.float32)
     pred_loc, pred_confs, mask_fp, vbs = mask_iv2.inception_v2_ssd(ig, config)
-    box,score,pp,masks = mask_model.predict(pred_loc, pred_confs,mask_fp, config.Config)
+    box,score,pp,masks = mask_model.predict(pred_loc, pred_confs,mask_fp, config)
 
 
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/coco/model.ckpt-2323')
-        for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/coco/raw-data/val2014/*.jpg'):
+        saver.restore(sess, '/home/dsl/all_check/face_detect/coco/model.ckpt-121342')
+        for ip in glob.glob('/home/dsl/models/research/object_detection/test_images/image2.jpg'):
             img = cv2.imread(ip)
             img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
 
@@ -110,7 +111,7 @@ def detect():
             print(p)
             for s in range(len(p)):
 
-                if sc[s]>0.2:
+                if sc[s]>0.4:
                     bxx.append(bx[s])
                     cls.append(p[s])
                     scores.append(sc[s])
@@ -124,7 +125,7 @@ def detect():
                     #igs[np.where(igs <= 0.2)] = 0
                     zer_ig[bxes[1]:bxes[3],bxes[0]:bxes[2]] = igs
                     imgs.append(zer_ig)
-                    plt.imshow(zer_ig)
+                    #plt.imshow(zer_ig)
                     #plt.show()
             if len(bxx) > 0:
                 imgs = np.asarray(imgs)
@@ -136,10 +137,10 @@ def detect():
                 #imgs = np.asarray(imgs, np.int)
                 #imgs[np.where(imgs > 255)] = 255
                 # imgs = np.clip(imgs,0,1)
-                plt.imshow(imgs, cmap='gray')
-                plt.show()
+                #plt.imshow(imgs)
+                #plt.show()
                 #visual.display_instances(org,np.asarray(bxx)*300)
                 visual.display_instances_title(org,np.asarray(bxx)*512,class_ids=np.asarray(cls),
                                                class_names=config.COCO_CLASSES,scores=scores)
 
-detect()
+train()
