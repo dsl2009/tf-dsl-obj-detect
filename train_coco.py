@@ -83,7 +83,7 @@ def train():
 
 def detect():
     config.batch_size = 1
-    ig = tf.placeholder(shape=(1, 512, 512, 3), dtype=tf.float32)
+    ig = tf.placeholder(shape=(1, config.image_size, config.image_size, 3), dtype=tf.float32)
     pred_loc, pred_confs, mask_fp, vbs = mask_iv2.inception_v2_ssd(ig, config)
     box,score,pp,masks = mask_model.predict(pred_loc, pred_confs,mask_fp, config)
 
@@ -91,12 +91,12 @@ def detect():
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/coco/model.ckpt-121342')
-        for ip in glob.glob('/home/dsl/models/research/object_detection/test_images/image2.jpg'):
+        saver.restore(sess, '/home/dsl/all_check/face_detect/coco-768/model.ckpt-11114')
+        for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/coco/raw-data/train2014/*.jpg'):
             img = cv2.imread(ip)
             img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
 
-            org, window, scale, padding, crop = utils.resize_image(img, min_dim=512, max_dim=512)
+            org, window, scale, padding, crop = utils.resize_image(img, min_dim=config.image_size, max_dim=config.image_size)
 
             img = (org/ 255.0-0.5)*2
             img = np.expand_dims(img, axis=0)
@@ -111,11 +111,11 @@ def detect():
             print(p)
             for s in range(len(p)):
 
-                if sc[s]>0.4:
+                if sc[s]>0.2:
                     bxx.append(bx[s])
                     cls.append(p[s])
                     scores.append(sc[s])
-                    zer_ig = np.zeros(shape=[512,512],dtype=np.float32)
+                    zer_ig = np.zeros(shape=[config.image_size,config.image_size],dtype=np.float32)
 
                     bxes = np.asarray(bx[s]*512,np.int32)
                     igs = cv2.resize(msks[s,:,:],dsize=(bxes[2]-bxes[0],bxes[3]-bxes[1]))
@@ -140,7 +140,7 @@ def detect():
                 #plt.imshow(imgs)
                 #plt.show()
                 #visual.display_instances(org,np.asarray(bxx)*300)
-                visual.display_instances_title(org,np.asarray(bxx)*512,class_ids=np.asarray(cls),
+                visual.display_instances_title(org,np.asarray(bxx)*config.image_size,class_ids=np.asarray(cls),
                                                class_names=config.COCO_CLASSES,scores=scores)
 
-train()
+detect()

@@ -102,6 +102,12 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,target_mask,mask_fp,cfg):
 
     crop_boxs = tf.concat(crop_boxs,axis=0)
     target_class_ids = tf.squeeze(tf.concat(target_class_ids,axis=1),axis=0)
+    sam_box = tf.random_shuffle(tf.range(tf.shape(crop_boxs)[0]))[:cfg.mask_train]
+
+    crop_boxs = tf.gather(crop_boxs,sam_box)
+    target_class_ids = tf.gather(target_class_ids,sam_box)
+    target_mask = tf.gather(target_mask,sam_box)
+
 
     pred_mask = build_fpn_mask_graph(crop_boxs,mask_fp,cfg)
     mask_loss = mrcnn_mask_loss(target_mask,pred_mask,target_class_ids)

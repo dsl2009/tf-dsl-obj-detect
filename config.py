@@ -144,8 +144,9 @@ MAX_GT = 100
 batch_size = 4
 image_size = 768
 mask_pool_shape = 14
-norm_value = 16.0
+norm_value = 10.0
 mask_weight_loss = 2.0
+mask_train = 50
 Config = coco_inceptionv2_dsl_800
 
 
