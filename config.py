@@ -147,6 +147,18 @@ mask_pool_shape = 14
 norm_value = 10.0
 mask_weight_loss = 2.0
 mask_train = 50
+if True:
+    save_dir = '/home/dsl/all_check/face_detect/coco-768'
+    check_dir = '/home/dsl/all_check/inception_v2.ckpt'
+    data_image_dir = '/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/coco/raw-data/train2014'
+    annotations = '/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/coco/raw-data/annotations/instances_train2014.json'
+else:
+    save_dir = '/data_set/check/coco-768'
+    check_dir = '/data_set/check/inception_v2.ckpt'
+    data_image_dir = '/data_set/data/train2014'
+    annotations = '/data_set/data/annotations/instances_train2014.json'
+
+
 Config = coco_inceptionv2_dsl_800
 
 

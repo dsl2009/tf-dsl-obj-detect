@@ -10,7 +10,7 @@ import utils
 from matplotlib import pyplot as plt
 import visual
 from pycocotools import mask as maskUtils
-
+import config
 
 def annToRLE(ann, height, width):
 
@@ -38,8 +38,7 @@ def annToMask( ann, height, width):
 
 def get_image(coco,map_source_class_id,class_ids,i,mask_shape,image_size):
     annotations = coco.loadAnns(coco.getAnnIds(imgIds=[i], catIds=class_ids, iscrowd=False))
-    img_url = os.path.join('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/coco/raw-data/train2014',
-                           coco.imgs[i]["file_name"])
+    img_url = os.path.join(config.data_image_dir,coco.imgs[i]["file_name"])
     instance_masks = []
     cls_ids = []
     for annotation in annotations:

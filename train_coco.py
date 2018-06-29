@@ -26,7 +26,7 @@ def train():
     input_mask_index = tf.placeholder(shape=[config.batch_size, anchors_num],dtype=tf.int32)
 
     gen = data_gen.get_coco(batch_size=config.batch_size, max_detect=100,image_size=config.image_size,
-                            mask_shape=config.mask_pool_shape*2)
+                            mask_shape=config.mask_pool_shape*2,ann = config.annotations)
 
     input_gt_mask_trans = tf.transpose(input_gt_mask,[0,3,1,2])
     pred_loc, pred_confs, mask_fp, vbs = mask_iv2.inception_v2_ssd(img, config)
@@ -50,9 +50,9 @@ def train():
     saver = tf.train.Saver(vbs)
 
     def restore(sess):
-        saver.restore(sess, '/home/dsl/all_check/inception_v2.ckpt')
+        saver.restore(sess, config.check_dir)
 
-    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect/coco-768', summary_op=None, init_fn=restore)
+    sv = tf.train.Supervisor(logdir=config.save_dir, summary_op=None, init_fn=restore)
 
     with sv.managed_session() as sess:
         for step in range(1000000000):
@@ -91,7 +91,7 @@ def detect():
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/coco-768/model.ckpt-11114')
+        saver.restore(sess, '/home/dsl/all_check/face_detect/coco-768/model.ckpt-50405')
         for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/coco/raw-data/train2014/*.jpg'):
             img = cv2.imread(ip)
             img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)

@@ -145,9 +145,8 @@ def get_batch_shapes(batch_size,is_shuff = True,max_detect = 50,image_size=512):
 
 
 
-def get_coco(batch_size,is_shuff = True,max_detect = 50,image_size=512,mask_shape=28):
-    coco = COCO('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/coco/raw-data/annotations'
-                '/instances_train2014.json')
+def get_coco(batch_size,is_shuff = True,max_detect = 50,image_size=512,mask_shape=28,ann=None):
+    coco = COCO(ann)
     class_ids = sorted(coco.getCatIds())
 
     image_ids = list(coco.imgs.keys())
