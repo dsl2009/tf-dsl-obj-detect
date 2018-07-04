@@ -45,6 +45,26 @@ def log_sum(x):
     data = tf.log(tf.reduce_sum(tf.exp(x - mx), axis=1)) + mx
     return tf.reshape(data, (-1, 1))
 
+def sigmoid_cross_entropy_balanced(logits, labels):
+
+    y = tf.cast(labels, tf.float32)
+
+    count_neg = tf.reduce_sum(1. - y)
+    count_pos = tf.reduce_sum(y)
+
+
+    beta = count_neg / (count_neg + count_pos)
+
+
+    pos_weight = beta / (1 - beta)
+
+    cost = tf.nn.weighted_cross_entropy_with_logits(logits=logits, targets=y, pos_weight=pos_weight)
+
+
+    cost = tf.reduce_mean(cost * (1 - beta))
+
+
+    return tf.where(tf.equal(count_pos, 0.0), 0.0, cost)
 
 def build_fpn_mask_graph(rois, feature_maps,cfg):
 
@@ -72,6 +92,9 @@ def mrcnn_mask_loss(target_masks, pred_masks,target_class):
                     tf.nn.sigmoid_cross_entropy_with_logits(labels=target_masks,logits=pred_masks),
                     tf.constant(0.0))
     loss = tf.reduce_mean(loss)
+    '''
+    loss = sigmoid_cross_entropy_balanced(pred_masks,labels=target_masks)
+    '''
     return loss
 
 def get_loss(conf_t,loc_t,pred_loc, pred_confs,target_mask,mask_fp,cfg):

@@ -5,14 +5,14 @@ import aug_utils
 import random
 import numpy as np
 import visual
-data_set = VOCDetection('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit')
+import config
 from data_set.augmentations import SSDAugmentation
 from data_set.shapes import get_image
 #data_set = face.Face(root='/home/dsl/PycharmProjects/tf-ssd/data_set/face1.json',image_size=512)
 from pycocotools.coco import COCO
 from data_set.coco import get_image as get_coco_image
 
-
+data_set = VOCDetection(config.voc_dir)
 def get_batch(batch_size,is_shuff = True,max_detect = 50,image_size=300):
     length = data_set.len()
     idx = list(range(length))
@@ -110,19 +110,19 @@ def get_batch_inception(batch_size,is_shuff = True,max_detect = 50,image_size=30
             if index>= length:
                 index = 0
 
-def get_batch_shapes(batch_size,is_shuff = True,max_detect = 50,image_size=512):
+def get_batch_shapes(batch_size,is_shuff = True,max_detect = 50,image_size=512,mask_pool_size=56):
 
     b = 0
     while True:
         if True:
-            img, lab, box, mask = get_image()
+            img, lab, box, mask = get_image(image_size=image_size,mask_pool_size=mask_pool_size)
             img = img/255.0
             img = img - 0.5
             img = img * 2.0
             #img = (img.astype(np.float32) - np.array([123.7, 116.8, 103.9]))/255
             if b== 0:
                 images = np.zeros(shape=[batch_size,image_size,image_size,3],dtype=np.float32)
-                masks = np.zeros(shape=[batch_size, 56, 56,max_detect], dtype=np.int)
+                masks = np.zeros(shape=[batch_size, mask_pool_size, mask_pool_size,max_detect], dtype=np.int)
                 boxs = np.zeros(shape=[batch_size,max_detect,4],dtype=np.float32)
                 label = np.zeros(shape=[batch_size,max_detect],dtype=np.int32)
                 images[b,:,:,:] = img
@@ -148,7 +148,7 @@ def get_batch_shapes(batch_size,is_shuff = True,max_detect = 50,image_size=512):
 def get_coco(batch_size,is_shuff = True,max_detect = 50,image_size=512,mask_shape=28,ann=None):
     coco = COCO(ann)
     class_ids = sorted(coco.getCatIds())
-
+    print(class_ids)
     image_ids = list(coco.imgs.keys())
     map_source_class_id = dict(zip(class_ids, range(len(class_ids))))
     length = len(image_ids)
@@ -165,6 +165,7 @@ def get_coco(batch_size,is_shuff = True,max_detect = 50,image_size=512,mask_shap
                 index = index+1
                 print(index)
                 continue
+            #visual.display_instances(img,box*image_size)
             img = img/255.0
             img = img - 0.5
             img = img * 2.0
@@ -198,6 +199,6 @@ def get_coco(batch_size,is_shuff = True,max_detect = 50,image_size=512,mask_shap
 
 
 def tt():
-    gen = get_coco(batch_size=8,max_detect=50)
+    gen = get_coco(batch_size=8,max_detect=50,mask_shape=56,ann='/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/building/train/annotation.json')
     for s in range(10):
         next(gen)

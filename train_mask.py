@@ -14,17 +14,17 @@ import visual
 from matplotlib import pyplot as plt
 import cv2
 def train():
-    img = tf.placeholder(shape=[config.batch_size, config.Config['min_dim'], config.Config['min_dim'], 3], dtype=tf.float32)
+    img = tf.placeholder(shape=[config.batch_size, config.image_size, config.image_size, 3], dtype=tf.float32)
     anchors_num = sum(
         [config.Config['feature_maps'][s] ** 2 * config.Config['aspect_num'][s] for s in range(6)])
 
     input_loc_t = tf.placeholder(shape=[config.batch_size, anchors_num, 4], dtype=tf.float32)
     input_conf_t = tf.placeholder(shape=[config.batch_size, anchors_num], dtype=tf.float32)
-    input_gt_mask = tf.placeholder(shape=[config.batch_size, 56,56,50],dtype=tf.int32)
+    input_gt_mask = tf.placeholder(shape=[config.batch_size, config.mask_pool_shape*2,config.mask_pool_shape*2,50],dtype=tf.int32)
     input_gt_box = tf.placeholder(shape=[config.batch_size, 50, 4],dtype=tf.float32)
     input_mask_index = tf.placeholder(shape=[config.batch_size, anchors_num],dtype=tf.int32)
 
-    gen = data_gen.get_batch_shapes(batch_size=config.batch_size, image_size=512)
+    gen = data_gen.get_batch_shapes(batch_size=config.batch_size, image_size=config.image_size,mask_pool_size=config.mask_pool_shape*2)
 
     input_gt_mask_trans = tf.transpose(input_gt_mask,[0,3,1,2])
     pred_loc, pred_confs, mask_fp, vbs = mask_iv2.inception_v2_ssd(img, config)
@@ -50,7 +50,7 @@ def train():
     def restore(sess):
         saver.restore(sess, '/home/dsl/all_check/inception_v2.ckpt')
 
-    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect/mask5', summary_op=None, init_fn=restore)
+    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect/shape_mask', summary_op=None, init_fn=restore)
 
     with sv.managed_session() as sess:
         for step in range(1000000000):
@@ -84,15 +84,15 @@ def detect():
     config.batch_size = 1
     ig = tf.placeholder(shape=(1, 512, 512, 3), dtype=tf.float32)
     pred_loc, pred_confs, mask_fp, vbs = mask_iv2.inception_v2_ssd(ig, config)
-    box,score,pp,masks = mask_model.predict(pred_loc, pred_confs,mask_fp, config.Config)
+    box,score,pp,masks = mask_model.predict(pred_loc, pred_confs,mask_fp, config)
 
 
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/mask3/model.ckpt-19234')
+        saver.restore(sess, '/home/dsl/all_check/face_detect/shape_mask/model.ckpt-2596')
         for ip in range(100):
-            img, cls_id, _, _ = shapes.get_image()
+            img, cls_id, _, _ = shapes.get_image(image_size=512,mask_pool_size=56)
 
             org, window, scale, padding, crop = utils.resize_image(img, min_dim=512, max_dim=512)
 

@@ -32,3 +32,15 @@ def un_conv_args(weight_decay=0.00004,
         normalizer_fn=normalizer_fn,
         normalizer_params=normalizer_params) as sc:
       return sc
+
+def mul_channel_arg_scope(weight_decay=0.00004,
+                        activation_fn=tf.nn.relu,
+                        is_train=True
+                      ):
+  with slim.arg_scope([slim.conv2d],weights_regularizer=slim.l2_regularizer(weight_decay),trainable = is_train):
+    with slim.arg_scope(
+        [slim.conv2d],
+        weights_initializer=slim.variance_scaling_initializer(),
+        activation_fn=activation_fn,
+        ) as sc:
+      return sc

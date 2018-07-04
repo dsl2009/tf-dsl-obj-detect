@@ -3,7 +3,7 @@ import config
 import math
 from itertools import product as product
 import data_gen
-
+from util import gen_chors
 def intersect(box_a, box_b):
     max_xy = np.minimum(box_a[:, 2:], box_b[:,2:])
     min_xy = np.maximum(box_a[:, :2], box_b[:,:2])
@@ -48,6 +48,7 @@ def get_prio_box(cfg = config.voc_vgg_300):
             s_k = cfg['min_sizes'][k] / cfg['min_dim']
             mean.append([cx, cy, s_k, s_k])
 
+
             # aspect_ratio: 1
             # rel size: sqrt(s_k * s_(k+1))
             s_k_prime = math.sqrt(s_k * (cfg['max_sizes'][k] / cfg['min_dim']))
@@ -57,10 +58,47 @@ def get_prio_box(cfg = config.voc_vgg_300):
             for ar in cfg['aspect_ratios'][k]:
                 mean.append([cx, cy, s_k * math.sqrt(ar), s_k / math.sqrt(ar)])
                 mean.append([cx, cy, s_k / math.sqrt(ar), s_k * math.sqrt(ar)])
+
                 # back to torch land
     out = np.asarray(mean,dtype=np.float32)
 
     out = np.clip(out,a_min=0.0,a_max=1.0)
+    return out
+
+
+def get_prio_box_new(cfg=config.voc_vgg_300):
+    mean = []
+    for k, f in enumerate(cfg['feature_maps']):
+        for i, j in product(range(f), repeat=2):
+            f_k = cfg['min_dim'] / cfg['steps'][k]
+
+            # unit center x,y
+            cx = (j + 0.5) / f_k
+            cy = (i + 0.5) / f_k
+
+            # aspect_ratio: 1
+            # rel size: min_size
+            s_k = cfg['min_sizes'][k] / cfg['min_dim']
+            mean.append([cx, cy, s_k, s_k])
+
+            mean.append([cx, cy, s_k * 1.2, s_k * 1.2])
+            # aspect_ratio: 1
+            # rel size: sqrt(s_k * s_(k+1))
+            s_k_prime = math.sqrt(s_k * (cfg['max_sizes'][k] / cfg['min_dim']))
+            mean.append([cx, cy, s_k_prime, s_k_prime])
+
+            # rest of aspect ratios
+            for ar in cfg['aspect_ratios'][k]:
+                mean.append([cx, cy, s_k * math.sqrt(ar), s_k / math.sqrt(ar)])
+                mean.append([cx, cy, s_k / math.sqrt(ar), s_k * math.sqrt(ar)])
+
+                mean.append([cx, cy, s_k * math.sqrt(ar) * 1.2, s_k / math.sqrt(ar) * 1.2])
+                mean.append([cx, cy, s_k / math.sqrt(ar) * 1.2, s_k * math.sqrt(ar) * 1.2])
+
+                # back to torch land
+    out = np.asarray(mean, dtype=np.float32)
+
+    out = np.clip(out, a_min=0.0, a_max=1.0)
     return out
 
 def over_laps(boxa,boxb):
@@ -93,8 +131,8 @@ def encode(matched, priors, variances):
 
 
 def get_loc_conf(true_box, true_label,batch_size = 4,cfg = config.voc_vgg_300):
-
-    pri = get_prio_box(cfg = cfg)
+    #pri = get_prio_box_new(cfg = cfg)
+    pri = gen_chors.gen_ssd_anchors()
     num_priors = pri.shape[0]
     loc_t = np.zeros([batch_size, num_priors, 4])
     conf_t = np.zeros([batch_size, num_priors])
@@ -137,6 +175,7 @@ def get_loc_conf(true_box, true_label,batch_size = 4,cfg = config.voc_vgg_300):
 
 
         loc = encode(matches, pri, variances=[0.1, 0.2])
+
         loc_t[s] = loc
         conf_t[s] = conf
     return loc_t,conf_t
@@ -189,6 +228,7 @@ def get_loc_conf_mask(true_box, true_label,batch_size = 4,cfg = config.voc_vgg_3
 
 
         loc = encode(matches, pri, variances=[0.1, 0.2])
+
         loc_t[s] = loc
         conf_t[s] = conf
         mask_index[s] = mask_t

@@ -5,10 +5,11 @@ import utils
 import data_gen
 import cv2
 import numpy as np
-import np_utils
+from util import gen_chors
 import visual
 import time
 import glob
+import np_utils
 #tf.enable_eager_execution()
 def model(inputs,cfg):
     source = []
@@ -199,8 +200,10 @@ def eger(cfg):
 
 def predict(ig,pred_loc, pred_confs, vbs,cfg):
 
-    priors = utils.get_prio_box(cfg=cfg)
-
+    #priors = utils.get_prio_box(cfg=cfg)
+    #priors = np_utils.get_prio_box_new(cfg=cfg)
+    priors = gen_chors.gen_ssd_anchors()
+    print(priors.shape)
     box = utils.decode_box(prios=priors, pred_loc=pred_loc[0])
     props = slim.nn.softmax(pred_confs[0])
     pp = props[:,1:]
@@ -219,7 +222,7 @@ def predict(ig,pred_loc, pred_confs, vbs,cfg):
         scores=score,
         boxes=box,
         iou_threshold=0.5,
-        max_output_size=50
+        max_output_size=100
     )
     return tf.gather(box,keep),tf.gather(score,keep),tf.gather(cls,keep)
 

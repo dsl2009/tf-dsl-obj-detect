@@ -40,9 +40,6 @@ def log_sum_exp(x):
     print(x_max)
     return torch.log(torch.sum(torch.exp(x-x_max), 1, keepdim=True)) + x_max
 
-a = tf.constant([[1,2,3,4,5.0],[1,3,3,4,5.0]],dtype=tf.float32)
-b = tf.constant([1,2],dtype=tf.int32)
-print(tf.losses.softmax_cross_entropy(onehot_labels=b,logits=a))
-print(tf.losses.sigmoid_cross_entropy(logits=a,label_smoothing=b))
-
-print(tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=a,labels=b)))
+a = tf.constant([[1,0,1,0,1.0],[1,0,1,0,1.0]],dtype=tf.float32)
+print()
+print(tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=a,logits=a)))

@@ -193,17 +193,17 @@ def random_image(height=512, width=512):
 
 
 
-def get_image():
+def get_image(image_size,mask_pool_size):
     try:
-        bg, shpes = random_image(512, 512)
+        bg, shpes = random_image(image_size, image_size)
         ig = load_image(bg_color=bg, shapes=shpes)
         msk, cls_id = load_mask(shpes)
         box = utils.extract_bboxes(msk)
-        mask = utils.minimize_mask(box, msk, mini_shape=(56, 56))
-        box = box/512.0
+        mask = utils.minimize_mask(box, msk, mini_shape=(mask_pool_size, mask_pool_size))
+        box = box*1.0/image_size
         return ig,cls_id,box,mask
     except:
-        return get_image()
+        return get_image(image_size,mask_pool_size)
 
 
 def tt():

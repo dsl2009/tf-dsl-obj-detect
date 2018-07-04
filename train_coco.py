@@ -2,7 +2,7 @@ import data_gen
 import tensorflow as tf
 import config
 from ssd_mask_rcnn import mask_model
-from models import mask_iv2
+from models import mask_iv2,resnet_500
 from tensorflow.contrib import slim
 import np_utils
 from tensorflow.contrib.framework.python.ops.variables import get_or_create_global_step
@@ -29,7 +29,7 @@ def train():
                             mask_shape=config.mask_pool_shape*2,ann = config.annotations)
 
     input_gt_mask_trans = tf.transpose(input_gt_mask,[0,3,1,2])
-    pred_loc, pred_confs, mask_fp, vbs = mask_iv2.inception_v2_ssd(img, config)
+    pred_loc, pred_confs, mask_fp, vbs = resnet_500.model(img, config)
 
     target_mask = mask_model.get_target_mask(input_gt_box, input_gt_mask_trans, input_mask_index,config)
 
@@ -91,8 +91,9 @@ def detect():
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/coco-768/model.ckpt-50405')
-        for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/coco/raw-data/train2014/*.jpg'):
+        saver.restore(sess, '/home/dsl/all_check/face_detect/coco-768/model.ckpt-51415')
+        for ip in glob.glob('/home/dsl/95048b8e9492e290.jpg'):
+            print(ip)
             img = cv2.imread(ip)
             img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
 
@@ -111,7 +112,7 @@ def detect():
             print(p)
             for s in range(len(p)):
 
-                if sc[s]>0.2:
+                if sc[s]>0.3:
                     bxx.append(bx[s])
                     cls.append(p[s])
                     scores.append(sc[s])
@@ -137,8 +138,8 @@ def detect():
                 #imgs = np.asarray(imgs, np.int)
                 #imgs[np.where(imgs > 255)] = 255
                 # imgs = np.clip(imgs,0,1)
-                #plt.imshow(imgs)
-                #plt.show()
+                plt.imshow(imgs)
+                plt.show()
                 #visual.display_instances(org,np.asarray(bxx)*300)
                 visual.display_instances_title(org,np.asarray(bxx)*config.image_size,class_ids=np.asarray(cls),
                                                class_names=config.COCO_CLASSES,scores=scores)
