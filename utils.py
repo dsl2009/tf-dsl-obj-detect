@@ -407,3 +407,69 @@ def resize_mask(mask, scale, padding, crop=None):
     else:
         mask = np.pad(mask, padding, mode='constant', constant_values=0)
     return mask
+def log2_graph(x):
+    x = tf.cast(x,tf.float32)
+    return tf.log(x) / tf.log(2.0)
+def roi_align(boxes,feature_maps,cfg):
+
+    # Assign each ROI to a level in the pyramid based on the ROI area.
+    y1, x1, y2, x2 = tf.split(boxes, 4, axis=1)
+    h = y2 - y1
+    w = x2 - x1
+    # Use shape of first image. Images in a batch must have the same size.
+
+    image_area = tf.cast(cfg.image_size * cfg.image_size, tf.float32)
+
+    roi_level = log2_graph(tf.cast(tf.sqrt(h * w),tf.float32) / (224.0 / tf.sqrt(image_area)))
+
+    roi_level = tf.minimum(2, tf.maximum(
+        0, 1 + tf.cast(tf.round(roi_level), tf.int32)))
+    roi_level = tf.squeeze(roi_level, 1)
+
+    # Loop through levels and apply ROI pooling to each. P2 to P5.
+    pooled = []
+    box_to_level = []
+    org_ix = []
+    for i, level in enumerate(range(3)):
+        ix = tf.where(tf.equal(roi_level, level))
+        level_boxes = tf.gather_nd(boxes, ix)
+
+        org_ix.append(ix)
+        # Box indicies for crop_and_resize.
+
+        #box_indices = tf.cast(ix[0,:], tf.int32)
+        box_indices = tf.zeros(tf.shape(ix)[0],dtype=tf.int32)
+        # Keep track of which box is mapped to which level
+        box_to_level.append(ix)
+
+        # Stop gradient propogation to ROI proposals
+        level_boxes = tf.stop_gradient(level_boxes)
+        box_indices = tf.stop_gradient(box_indices)
+
+        # Crop and Resize
+        # From Mask R-CNN paper: "We sample four regular locations, so
+        # that we can evaluate either max or average pooling. In fact,
+        # interpolating only a single value at each bin center (without
+        # pooling) is nearly as effective."
+        #
+        # Here we use the simplified approach of a single value per bin,
+        # which is how it's done in tf.crop_and_resize()
+        # Result: [batch * num_boxes, pool_height, pool_width, channels]
+
+        level_boxes = tf.cast(level_boxes,tf.float32)
+        pooled.append(tf.image.crop_and_resize(
+            feature_maps[i], level_boxes, box_indices, [cfg.mask_pool_shape,cfg.mask_pool_shape],
+            method="bilinear"))
+
+    org_ix = tf.squeeze(tf.concat(org_ix,axis=0),axis=1)
+
+    index = tf.nn.top_k(org_ix,k=tf.shape(boxes)[0]).indices
+
+
+    index = tf.reverse(index,axis=[0])
+    pooled = tf.concat(pooled, axis=0)
+
+    pooled = tf.gather(pooled, index)
+
+
+    return pooled

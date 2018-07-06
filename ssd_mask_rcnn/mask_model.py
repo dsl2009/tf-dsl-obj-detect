@@ -10,6 +10,8 @@ import visual
 import time
 from parm import parm_args
 from models import mask_iv2
+from util import gen_chors
+from ssd_mask_rcnn import iv2_mask_add
 
 def loss_clc(truth_box,gt_lables):
     true_box, non_ze = utils.trim_zeros_graph(truth_box)
@@ -69,7 +71,8 @@ def sigmoid_cross_entropy_balanced(logits, labels):
 def build_fpn_mask_graph(rois, feature_maps,cfg):
 
     ind = tf.zeros(shape=(tf.shape(rois)[0]),dtype=tf.int32)
-    x = tf.image.crop_and_resize(feature_maps,rois,ind,crop_size=[cfg.mask_pool_shape,cfg.mask_pool_shape])
+    #x = tf.image.crop_and_resize(feature_maps,rois,ind,crop_size=[cfg.mask_pool_shape,cfg.mask_pool_shape])
+    x = utils.roi_align(rois,feature_maps,cfg)
     with slim.arg_scope(parm_args.un_conv_args()):
         x = slim.repeat(x,4,slim.conv2d,256,3)
     x = slim.conv2d_transpose(x,256,kernel_size=2,stride=2,activation_fn=slim.nn.relu)
@@ -99,7 +102,7 @@ def mrcnn_mask_loss(target_masks, pred_masks,target_class):
 
 def get_loss(conf_t,loc_t,pred_loc, pred_confs,target_mask,mask_fp,cfg):
 
-    anchor = utils.get_prio_box(cfg=cfg.Config)
+    anchor = gen_chors.gen_ssd_anchors()
     #anchor = tf.tile(anchor,multiples=[cfg.batch_size,1])
 
    # conf_t, loc_t = utils.batch_slice(inputs=[truth_box, gt_lables], graph_fn=loss_clc, batch_size=batch_size)
@@ -114,6 +117,8 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,target_mask,mask_fp,cfg):
 
         tmp_ped_loc = tf.gather(tmp_ped_loc,tmp_conf_index)
         live_anchor = tf.gather(anchor, tmp_conf_index)
+        
+        live_anchor = tf.cast(live_anchor,tf.float32)
         decode_box = utils.decode_box(live_anchor, tmp_ped_loc)
         x1, y1, x2, y2 = tf.split(decode_box, 4, axis=1)
 
@@ -258,7 +263,7 @@ def get_target_mask(true_box,true_mask,mask_t,cfg):
 
 def predict(pred_loc, pred_confs,mask_fp, cfg):
 
-    priors = utils.get_prio_box(cfg=cfg.Config)
+    priors = gen_chors.gen_ssd_anchors()
 
     box = utils.decode_box(prios=priors, pred_loc=pred_loc[0])
     props = slim.nn.softmax(pred_confs[0])
@@ -282,7 +287,7 @@ def predict(pred_loc, pred_confs,mask_fp, cfg):
     keep = tf.image.non_max_suppression(
         scores=score,
         boxes=crop_box,
-        iou_threshold=0.5,
+        iou_threshold=0.3,
         max_output_size=50
     )
 
@@ -317,10 +322,11 @@ def eger(cfg):
 
     loct, conft, maskt = np_utils.get_loc_conf_mask(true_box, true_label, batch_size=cfg.batch_size,cfg=cfg.Config)
 
+    print(loct.shape)
 
+    pred_loc, pred_confs, mask_fp,vbs = iv2_mask_add.gen_box(images, cfg)
+    print(pred_loc)
 
-    pred_loc, pred_confs, mask_fp,vbs = mask_iv2.inception_v2_ssd(images, cfg)
-
-    target_mask = get_target_mask(true_box,true_mask,maskt)
+    target_mask = get_target_mask(true_box,true_mask,maskt,cfg)
 
     get_loss(conft, loct, pred_loc, pred_confs,target_mask,mask_fp, cfg)

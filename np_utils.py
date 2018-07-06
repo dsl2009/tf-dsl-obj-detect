@@ -186,7 +186,8 @@ def get_loc_conf(true_box, true_label,batch_size = 4,cfg = config.voc_vgg_300):
 
 def get_loc_conf_mask(true_box, true_label,batch_size = 4,cfg = config.voc_vgg_300):
 
-    pri = get_prio_box(cfg = cfg)
+    #pri = get_prio_box(cfg = cfg)
+    pri = gen_chors.gen_ssd_anchors()
     num_priors = pri.shape[0]
     loc_t = np.zeros([batch_size, num_priors, 4])
     conf_t = np.zeros([batch_size, num_priors])

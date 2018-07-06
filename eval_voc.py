@@ -1,4 +1,4 @@
-from models import inceptionv3_500_ince,inception_500_ince
+from models import iv2_mult_chan
 import tensorflow as tf
 import eval_utils
 import config
@@ -61,12 +61,12 @@ def detect():
     dts = '/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit/VOC2007/ImageSets/Main/test.txt'
     config.batch_size = 1
     ig = tf.placeholder(shape=(1, 512, 512, 3), dtype=tf.float32)
-    pred_loc, pred_confs, vbs = inceptionv3_500_ince.inception_v2_ssd(ig,config)
-    box,score,pp = predict(ig,pred_loc, pred_confs, vbs,config.Config)
+    pred_loc, pred_confs, vbs = iv2_mult_chan.gen_box(ig,config)
+    box,score,pp = predict(ig,pred_loc, pred_confs, vbs,config)
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/voc-v31/model.ckpt-105912')
+        saver.restore(sess, '/home/dsl/all_check/face_detect/voc_ssd_yolo/model.ckpt-85183')
         with open(dts) as f:
             ct = 1
             total_aps = []
@@ -93,7 +93,7 @@ def detect():
                 cls = []
                 scores = []
                 for kk in range(len(p)):
-                    if sc[kk]>0.3:
+                    if sc[kk]>0.6:
                         bxx.append(bx[kk])
                         cls.append(p[kk])
                         scores.append(sc[kk])

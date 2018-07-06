@@ -1,4 +1,4 @@
-from models import iv2_mult_chan
+from models import iv2_mult_chan_add,iv2_mult_chan
 import tensorflow as tf
 import time
 import config
@@ -23,7 +23,7 @@ def train():
     loc = tf.placeholder(shape=[config.batch_size, anchors_num, 4], dtype=tf.float32)
     conf = tf.placeholder(shape=[config.batch_size, anchors_num], dtype=tf.float32)
 
-    pred_loc, pred_confs, vbs = iv2_mult_chan.gen_box(img,config)
+    pred_loc, pred_confs, vbs = iv2_mult_chan_add.gen_box(img,config)
 
 
     train_tensors = get_loss(conf, loc, pred_loc, pred_confs,config)
@@ -73,12 +73,12 @@ def train():
 def detect():
     config.batch_size = 1
     ig = tf.placeholder(shape=(1, 512, 512, 3), dtype=tf.float32)
-    pred_loc, pred_confs, vbs = iv2_mult_chan.gen_box(ig,config)
+    pred_loc, pred_confs, vbs = iv2_mult_chan_add.gen_box(ig,config)
     box,score,pp = predict(ig,pred_loc, pred_confs, vbs,config.Config)
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/voc_ssd_yolo/model.ckpt-20702')
+        saver.restore(sess, '/home/dsl/all_check/face_detect/voc_ssd_yolo_fen/model.ckpt-97149')
         for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit/VOC2012/JPEGImages/*.jpg'):
             print(ip)
             img = cv2.imread(ip)
@@ -94,13 +94,73 @@ def detect():
             cls = []
             scores = []
             for s in range(len(p)):
-                if sc[s]>0.3:
+                if sc[s]>0.95:
                     bxx.append(bx[s])
                     cls.append(p[s])
                     scores.append(sc[s])
             if len(bxx) > 0:
                 #visual.display_instances(org,np.asarray(bxx)*300)
                 visual.display_instances_title(org,np.asarray(bxx)*512,class_ids=np.asarray(cls),class_names=config.VOC_CLASSES,scores=scores)
+def video():
+    config.batch_size = 1
+    ig = tf.placeholder(shape=(1, 512, 512, 3), dtype=tf.float32)
+    pred_loc, pred_confs, vbs = iv2_mult_chan.gen_box(ig,config)
+    box,score,pp = predict(ig,pred_loc, pred_confs, vbs,config.Config)
+    saver = tf.train.Saver()
+    with tf.Session() as sess:
+        sess.run(tf.global_variables_initializer())
+        saver.restore(sess, '/home/dsl/all_check/face_detect/voc_ssd_yolo/model.ckpt-85183')
+        cap = cv2.VideoCapture('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/face_detect/jijing.mp4')
 
 
-train()
+
+
+        cap.set(3, 320 * 3)
+        cap.set(4, 320 * 3)
+        t1 = time.time()
+        while True:
+            ret, frame = cap.read()
+            if not ret:
+                break
+
+            img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            org, window, scale, padding, crop = utils.resize_image(img, min_dim=config.Config['min_dim'],
+                                                                   max_dim=config.Config['min_dim'])
+
+            img = (org / 255.0 - 0.5) * 2
+            img = np.expand_dims(img, axis=0)
+            t = time.time()
+
+            bx, sc, p = sess.run([box, score, pp], feed_dict={ig: img})
+
+            fps = int(1 / (time.time() - t) * 10) / 10.0
+
+            cv2.putText(frame, 'fps:' + str(fps), (10, 30),
+                        cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), lineType=cv2.LINE_AA)
+
+            bxx = []
+            cls = []
+            scores = []
+            for s in range(len(p)):
+                if sc[s] > 0.4:
+                    bxx.append(bx[s])
+                    cls.append(p[s])
+                    scores.append(sc[s])
+            if len(bxx) > 0:
+                finbox = utils.revert_image(scale, padding, config.Config['min_dim'], np.asarray(bxx))
+                for ix, s in enumerate(finbox):
+                    cv2.rectangle(frame, pt1=(s[0], s[1]), pt2=(s[2], s[3]), color=(0, 255, 0), thickness=2)
+                    cv2.putText(frame, config.VOC_CLASSES[cls[ix]] + '_' + str(scores[ix])[0:4], (s[0], s[1]),
+                                cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 0, 255), lineType=cv2.LINE_AA)
+
+            cv2.imshow('fram', frame)
+
+            if cv2.waitKeyEx(1) & 0xFF == ord('q'):
+                break
+        print('ss')
+
+        cap.release()
+        cv2.destroyAllWindows()
+
+
+detect()

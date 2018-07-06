@@ -11,7 +11,7 @@ from data_set.shapes import get_image
 #data_set = face.Face(root='/home/dsl/PycharmProjects/tf-ssd/data_set/face1.json',image_size=512)
 from pycocotools.coco import COCO
 from data_set.coco import get_image as get_coco_image
-
+from data_set import tree
 data_set = VOCDetection(config.voc_dir)
 def get_batch(batch_size,is_shuff = True,max_detect = 50,image_size=300):
     length = data_set.len()
@@ -74,9 +74,10 @@ def get_batch_inception(batch_size,is_shuff = True,max_detect = 50,image_size=30
 
                 if random.randint(0,1)==1:
                    img, box = aug_utils.fliplr_left_right(img,box)
-                img = img/255.0
-                img = img - 0.5
-                img = img * 2.0
+                #img = img/255.0
+                #img = img - 0.5
+                #img = img * 2.0
+                img = (img-[104, 117, 123])/255.0
 
             else:
                 img, box, lab = aug(img,box,lab)
@@ -115,7 +116,7 @@ def get_batch_shapes(batch_size,is_shuff = True,max_detect = 50,image_size=512,m
     b = 0
     while True:
         if True:
-            img, lab, box, mask = get_image(image_size=image_size,mask_pool_size=mask_pool_size)
+            img, lab, box, mask = tree.get_image()
             img = img/255.0
             img = img - 0.5
             img = img * 2.0

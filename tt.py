@@ -40,6 +40,11 @@ def log_sum_exp(x):
     print(x_max)
     return torch.log(torch.sum(torch.exp(x-x_max), 1, keepdim=True)) + x_max
 
-a = tf.constant([[1,0,1,0,1.0],[1,0,1,0,1.0]],dtype=tf.float32)
-print()
-print(tf.reduce_mean(tf.nn.sigmoid_cross_entropy_with_logits(labels=a,logits=a)))
+a = [[1,3,2,0],[1,2,3,4]]
+a = [1,3,2,0]
+b = [1,2,3,4]
+ide = tf.nn.top_k(a,k=4).indices
+#ide = tf.reshape(ide,(-1,1))
+ide = tf.reverse(ide,axis=[0])
+print(tf.gather(b,ide))
+print(ide)

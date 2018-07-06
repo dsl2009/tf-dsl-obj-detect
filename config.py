@@ -46,7 +46,7 @@ voc_inceptionv2_dsl_500 = {
     'name': 'VOC',
 }
 shape_inceptionv2_dsl_500 = {
-    'num_classes': 4,
+    'num_classes': 2,
     'lr_steps': (80000, 100000, 120000),
     'max_iter': 120000,
     'feature_maps': [64, 32, 16, 8, 4, 2],
@@ -138,35 +138,32 @@ face_inceptionv2_dsl_500 = {
 }
 
 remove_norm = {
-    'num_classes': 21,
+    'num_classes': 2,
     'feature_maps': [64, 32, 16],
     'min_dim': 512,
     'steps': [8, 16, 32],
     'min_sizes': [10 , 50 ,165 ],
     'max_sizes': [50, 165 ,446 ],
     'aspect_ratios': [[2], [2], [2]],
-    'aspect_num':[9,9,9],
+    'aspect_num':[9,9,15],
+    'variance': [0.1, 0.2],
+    'clip': True,
+    'name': 'VOC',
+}
+iv3_ssd_yolo = {
+    'num_classes': 21,
+    'feature_maps': [70, 34, 16],
+    'min_dim': 598,
+    'steps': [8, 16, 32],
+    'min_sizes': [10 , 50 ,165 ],
+    'max_sizes': [50, 165 ,446 ],
+    'aspect_ratios': [[2], [2], [2]],
+    'aspect_num':[9,9,15],
     'variance': [0.1, 0.2],
     'clip': True,
     'name': 'VOC',
 }
 
-
-voc_nana_mobile_448 = {
-    'num_classes': 2,
-    'lr_steps': (80000, 100000, 120000),
-    'max_iter': 120000,
-    'feature_maps': [28, 14, 7, 4, 2, 1],
-    'min_dim': 448,
-    'steps': [16, 32, 64, 112, 224, 448],
-    'min_sizes': [30 , 89 ,165 ,241 ,318 ,394],
-    'max_sizes': [60, 165 ,241 ,318 ,394 ,470],
-    'aspect_ratios': [[2], [2, 3], [2, 3], [2, 3], [2], [2]],
-    'aspect_num':[4,6,6,6,4,4],
-    'variance': [0.1, 0.2],
-    'clip': True,
-    'name': 'VOC',
-}
 VOC_CLASSES = (
     'aeroplane', 'bicycle', 'bird', 'boat',
     'bottle', 'bus', 'car', 'cat', 'chair',
@@ -191,10 +188,10 @@ MAX_GT = 100
 batch_size = 8
 image_size = 512
 mask_pool_shape = 28
-norm_value = 8.0
+norm_value = 2.0
 mask_weight_loss = 2.0
 mask_train = 50
-flag = 2
+flag = 1
 local_voc_dir = '/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit'
 server_voc_dir = '/data_set/data/VOCdevkit'
 
@@ -207,7 +204,7 @@ server_coco_ann = '/data_set/data/annotations/instances_train2014.json'
 local_check = '/home/dsl/all_check/inception_v2.ckpt'
 server_check = '/data_set/check/inception_v2.ckpt'
 
-local_save = '/home/dsl/all_check/face_detect/voc_ssd_yolo1'
+local_save = '/home/dsl/all_check/face_detect/voc_ssd_yolo_fen'
 server_save = '/data_set/check/voc_ssd_yolo'
 
 

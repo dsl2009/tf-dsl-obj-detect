@@ -1,7 +1,7 @@
 import data_gen
 import tensorflow as tf
 import config
-from ssd_mask_rcnn import mask_model
+from ssd_mask_rcnn import mask_model,iv2_mask_add
 from models import mask_iv2
 from tensorflow.contrib import slim
 import np_utils
@@ -13,10 +13,11 @@ import numpy as np
 import visual
 from matplotlib import pyplot as plt
 import cv2
+from data_set import data_loader
 def train():
     img = tf.placeholder(shape=[config.batch_size, config.image_size, config.image_size, 3], dtype=tf.float32)
     anchors_num = sum(
-        [config.Config['feature_maps'][s] ** 2 * config.Config['aspect_num'][s] for s in range(6)])
+        [config.Config['feature_maps'][s] ** 2 * config.Config['aspect_num'][s] for s in range(3)])
 
     input_loc_t = tf.placeholder(shape=[config.batch_size, anchors_num, 4], dtype=tf.float32)
     input_conf_t = tf.placeholder(shape=[config.batch_size, anchors_num], dtype=tf.float32)
@@ -24,10 +25,10 @@ def train():
     input_gt_box = tf.placeholder(shape=[config.batch_size, 50, 4],dtype=tf.float32)
     input_mask_index = tf.placeholder(shape=[config.batch_size, anchors_num],dtype=tf.int32)
 
-    gen = data_gen.get_batch_shapes(batch_size=config.batch_size, image_size=config.image_size,mask_pool_size=config.mask_pool_shape*2)
+    #gen = data_gen.get_batch_shapes(batch_size=config.batch_size, image_size=config.image_size,mask_pool_size=config.mask_pool_shape*2)
 
     input_gt_mask_trans = tf.transpose(input_gt_mask,[0,3,1,2])
-    pred_loc, pred_confs, mask_fp, vbs = mask_iv2.inception_v2_ssd(img, config)
+    pred_loc, pred_confs, mask_fp, vbs = iv2_mask_add.gen_box(img, config)
 
     target_mask = mask_model.get_target_mask(input_gt_box, input_gt_mask_trans, input_mask_index,config)
 
@@ -55,10 +56,11 @@ def train():
     with sv.managed_session() as sess:
         for step in range(1000000000):
 
-            data_images, data_true_box, data_true_label, data_true_mask = next(gen)
+            data_images, data_true_box, data_true_label, data_true_mask = data_loader.q.get()
 
             data_loct, data_conft,data_mask_index = np_utils.get_loc_conf_mask(data_true_box, data_true_label,
                                                                 batch_size=config.batch_size,cfg=config.Config)
+
             feed_dict = {img: data_images, input_loc_t: data_loct,
                          input_conf_t: data_conft,input_gt_mask:data_true_mask,input_gt_box:data_true_box,
                          input_mask_index:data_mask_index
@@ -66,7 +68,9 @@ def train():
 
 
             t = time.time()
+
             ls, step = sess.run([train_op, global_step], feed_dict=feed_dict)
+            print(ls)
 
             if step % 10 == 0:
                 tt = time.time() - t
@@ -83,14 +87,14 @@ def train():
 def detect():
     config.batch_size = 1
     ig = tf.placeholder(shape=(1, 512, 512, 3), dtype=tf.float32)
-    pred_loc, pred_confs, mask_fp, vbs = mask_iv2.inception_v2_ssd(ig, config)
+    pred_loc, pred_confs, mask_fp, vbs =  iv2_mask_add.gen_box(ig,config)
     box,score,pp,masks = mask_model.predict(pred_loc, pred_confs,mask_fp, config)
 
 
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/tree_mask/model.ckpt-2398')
+        saver.restore(sess, '/home/dsl/all_check/face_detect/tree_mask/model.ckpt-2944')
         for ip in range(100):
             img, cls_id, _, _ = tree.get_image()
 
@@ -133,12 +137,12 @@ def detect():
             imgs = np.asarray(imgs,np.int)
 
             #imgs = np.clip(imgs,0,1)
-            plt.imshow(imgs,cmap='gray')
+            plt.imshow(imgs)
             plt.show()
 
             if len(bxx) > 0:
                 #visual.display_instances(org,np.asarray(bxx)*300)
                 visual.display_instances_title(org,np.asarray(bxx)*512,class_ids=np.asarray(cls),
-                                               class_names=["square", "circle", "triangle"],scores=scores)
+                                               class_names=["tree"],scores=scores)
 
-detect()
+train()
