@@ -13,7 +13,8 @@ import numpy as np
 import visual
 from matplotlib import pyplot as plt
 import cv2
-from data_set import data_loader
+#from data_set import data_loader
+import glob
 def train():
     img = tf.placeholder(shape=[config.batch_size, config.image_size, config.image_size, 3], dtype=tf.float32)
     anchors_num = sum(
@@ -21,8 +22,8 @@ def train():
 
     input_loc_t = tf.placeholder(shape=[config.batch_size, anchors_num, 4], dtype=tf.float32)
     input_conf_t = tf.placeholder(shape=[config.batch_size, anchors_num], dtype=tf.float32)
-    input_gt_mask = tf.placeholder(shape=[config.batch_size, config.mask_pool_shape*2,config.mask_pool_shape*2,50],dtype=tf.int32)
-    input_gt_box = tf.placeholder(shape=[config.batch_size, 50, 4],dtype=tf.float32)
+    input_gt_mask = tf.placeholder(shape=[config.batch_size, config.mask_pool_shape*2,config.mask_pool_shape*2,100],dtype=tf.int32)
+    input_gt_box = tf.placeholder(shape=[config.batch_size, 100, 4],dtype=tf.float32)
     input_mask_index = tf.placeholder(shape=[config.batch_size, anchors_num],dtype=tf.int32)
 
     #gen = data_gen.get_batch_shapes(batch_size=config.batch_size, image_size=config.image_size,mask_pool_size=config.mask_pool_shape*2)
@@ -37,7 +38,7 @@ def train():
     lr = tf.train.exponential_decay(
         learning_rate=0.001,
         global_step=global_step,
-        decay_steps=10000,
+        decay_steps=100000,
         decay_rate=0.7,
         staircase=True)
     tf.summary.scalar('lr', lr)
@@ -51,7 +52,7 @@ def train():
     def restore(sess):
         saver.restore(sess, '/home/dsl/all_check/inception_v2.ckpt')
 
-    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect/tree_mask', summary_op=None, init_fn=restore)
+    sv = tf.train.Supervisor(logdir='/home/dsl/all_check/face_detect/coco_mask', summary_op=None, init_fn=restore)
 
     with sv.managed_session() as sess:
         for step in range(1000000000):
@@ -94,9 +95,10 @@ def detect():
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/tree_mask/model.ckpt-2944')
-        for ip in range(100):
-            img, cls_id, _, _ = tree.get_image()
+        saver.restore(sess, '/home/dsl/all_check/face_detect/coco_mask/model.ckpt-19817')
+        for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/coco/raw-data/val2014/*.jpg'):
+            img = cv2.imread(ip)
+            img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
 
             org, window, scale, padding, crop = utils.resize_image(img, min_dim=512, max_dim=512)
 
@@ -131,18 +133,18 @@ def detect():
             imgs = np.asarray(imgs)
 
             imgs = np.sum(imgs,axis=0)
-            imgs = imgs*255.0
-            imgs[np.where(igs > 255)] = 255
+            #imgs = imgs*255.0
+            #imgs[np.where(igs > 255)] = 255
             #imgs[np.where(igs <= 100)] = 0
-            imgs = np.asarray(imgs,np.int)
+            #imgs = np.asarray(imgs,np.int)
 
             #imgs = np.clip(imgs,0,1)
-            plt.imshow(imgs)
-            plt.show()
+            #plt.imshow(imgs)
+            #plt.show()
 
             if len(bxx) > 0:
                 #visual.display_instances(org,np.asarray(bxx)*300)
                 visual.display_instances_title(org,np.asarray(bxx)*512,class_ids=np.asarray(cls),
-                                               class_names=["tree"],scores=scores)
+                                               class_names=config.COCO_CLASSES,scores=scores)
 
-train()
+detect()

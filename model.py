@@ -221,8 +221,8 @@ def predict(ig,pred_loc, pred_confs, vbs,cfg):
     keep = tf.image.non_max_suppression(
         scores=score,
         boxes=box,
-        iou_threshold=0.5,
-        max_output_size=100
+        iou_threshold=0.3,
+        max_output_size=50
     )
     return tf.gather(box,keep),tf.gather(score,keep),tf.gather(cls,keep)
 
@@ -250,7 +250,7 @@ def detect(x):
             cls = []
             scores = []
             for s in range(len(p)):
-                if sc[s]>0.5:
+                if sc[s]>0.4:
                     bxx.append(bx[s])
                     cls.append(p[s])
                     scores.append(sc[s])

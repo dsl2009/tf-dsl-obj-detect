@@ -59,6 +59,33 @@ def detect_layer(img,cfg,is_train=True):
 
     return [c1,c2,c3],vbs
 
+def detect_layer1(img,cfg,is_train=True):
+    c1,c2,c3,vbs = inception_v2_ssd(img)
+    tmp1 = slim.conv2d(c1, num_outputs=256, kernel_size=[1, 13])
+    tmp1 = slim.conv2d(tmp1, num_outputs=128, kernel_size=[13, 1],activation_fn=None)
+
+    tmp2 = slim.conv2d(c1, num_outputs=256, kernel_size=[13, 1])
+    tmp2 = slim.conv2d(tmp2, num_outputs=128, kernel_size=[1, 13],activation_fn=None)
+    c1 = tmp1+tmp2
+
+    tmp1 = slim.conv2d(c2, num_outputs=256, kernel_size=[1, 13])
+    tmp1 = slim.conv2d(tmp1, num_outputs=128, kernel_size=[13, 1],activation_fn=None)
+    tmp2 = slim.conv2d(c2, num_outputs=256, kernel_size=[13, 1])
+    tmp2 = slim.conv2d(tmp2, num_outputs=128, kernel_size=[1, 13],activation_fn=None)
+    c2 = tmp1 + tmp2
+
+    tmp1 = slim.conv2d(c3, num_outputs=256, kernel_size=[1, 13])
+    tmp1 = slim.conv2d(tmp1, num_outputs=128, kernel_size=[13, 1],activation_fn=None)
+
+    tmp2 = slim.conv2d(c3, num_outputs=256, kernel_size=[13, 1])
+    tmp2 = slim.conv2d(tmp2, num_outputs=128, kernel_size=[1, 13],activation_fn=None)
+    c3 = tmp1 + tmp2
+
+
+
+
+    return [c1,c2,c3],vbs
+
 
 def gen_box(img,cfg):
     loc = []
@@ -77,17 +104,38 @@ def gen_box(img,cfg):
 
     return loc, conf, vbs
 
+def gen_box_cai(img,cfg):
+    loc = []
+    conf = []
+    source,vbs = detect_layer(img,cfg)
+    for cv, num in zip(source, cfg.Config['aspect_num']):
+        tmp = slim.conv2d(cv, 256, kernel_size=[1,13], stride=1)
+        tmp = slim.conv2d(tmp, num * 4, kernel_size=[13,1], stride=1,activation_fn=None)
+        loc.append(tmp)
+
+        tmp = slim.conv2d(tmp, num * cfg.Config['num_classes'], kernel_size=3, stride=1, activation_fn=None)
+        conf.append(tmp)
+
+    loc = tf.concat([tf.reshape(o, shape=(cfg.batch_size, -1, 4)) for o in loc], axis=1)
+    conf = tf.concat([tf.reshape(o, shape=(cfg.batch_size, -1, cfg.Config['num_classes'])) for o in conf],
+                     axis=1)
+
+    return loc, conf, vbs
 
 def gen_box_fen(img, cfg):
     loc = []
     conf = []
     source, vbs = detect_layer(img, cfg)
     for cv, num in zip(source, cfg.Config['aspect_num']):
+        tmp_loc = []
+        tmp_conf = []
         for x in range(3):
-            loc.append(slim.conv2d(cv, num * 4/3, kernel_size=3, stride=1,rate=x+1, activation_fn=None))
+            tmp_loc.append(slim.conv2d(cv, num * 4/3, kernel_size=3, stride=1,rate=x+1, activation_fn=None))
 
-            conf.append(
+            tmp_conf.append(
                 slim.conv2d(cv, num * cfg.Config['num_classes']/3, kernel_size=3, stride=1, rate=x+1,activation_fn=None))
+        loc.append(tf.concat(tmp_loc,axis=3))
+        conf.append(tf.concat(tmp_conf))
 
     loc = tf.concat([tf.reshape(o, shape=(cfg.batch_size, -1, 4)) for o in loc], axis=1)
     conf = tf.concat([tf.reshape(o, shape=(cfg.batch_size, -1, cfg.Config['num_classes'])) for o in conf],

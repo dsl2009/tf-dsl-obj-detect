@@ -6,8 +6,8 @@ from parm import parm_args
 def inception_v2_ssd(img):
     with slim.arg_scope(inception_v2.inception_v2_arg_scope()):
         logits, end_point = inception_v2.inception_v2_base(img)
-        #vbs = slim.get_variables_to_restore()
-        vbs = None
+        vbs = slim.get_variables_to_restore()
+        #vbs = None
 
     c1 = end_point['Mixed_3c']
     c2 = end_point['Mixed_4e']

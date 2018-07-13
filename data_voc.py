@@ -5,6 +5,7 @@ import sys
 from utils import resize_image
 import cv2
 import numpy as np
+from matplotlib import pyplot as plt
 if sys.version_info[0] == 2:
     import xml.etree.cElementTree as ET
 else:
@@ -133,6 +134,7 @@ class VOCDetection(object):
         target = ET.parse(self._annopath % img_id).getroot()
         img = cv2.imread(self._imgpath % img_id)
         img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
+
         height, width, channels = img.shape
 
         if self.target_transform is not None:
@@ -142,6 +144,7 @@ class VOCDetection(object):
             target = np.array(target)
 
             img, boxes, labels = self.transform(img, target[:, :4], target[:, 4])
+
 
         return img, boxes, labels
 

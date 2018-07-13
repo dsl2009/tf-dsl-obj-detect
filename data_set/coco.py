@@ -38,7 +38,7 @@ def annToMask( ann, height, width):
 
 def get_image(coco,map_source_class_id,class_ids,i,mask_shape,image_size):
     annotations = coco.loadAnns(coco.getAnnIds(imgIds=[i], catIds=class_ids, iscrowd=False))
-    img_url = os.path.join(config.data_image_dir,coco.imgs[i]["file_name"])
+    img_url = os.path.join(config.coco_image_dir,coco.imgs[i]["file_name"])
 
     instance_masks = []
     cls_ids = []

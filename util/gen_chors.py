@@ -54,7 +54,7 @@ def gen_multi_anchors(scales, ratios, shape, feature_stride, anchor_stride=1):
 
 def gen_ssd_anchors():
     #scals = [(36,74,96),(136,198,244),(294,349,420)]
-    scals = [(16, 32, 64), (96, 156, 244), (294, 349, 420)]
+    scals = [(24, 32, 64), (96, 156, 244), (294, 349, 420)]
     ratios = [[0.5,1,2],[0.5,1,2],[0.3,0.5,1,2,3]]
     shape =[(64,64),(32,32),(16,16)]
     feature_stride = [8,16,32]

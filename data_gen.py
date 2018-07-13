@@ -77,7 +77,8 @@ def get_batch_inception(batch_size,is_shuff = True,max_detect = 50,image_size=30
                 #img = img/255.0
                 #img = img - 0.5
                 #img = img * 2.0
-                img = (img-[104, 117, 123])/255.0
+                img = (img/255.0 - 0.5)*2
+                #img = (img-[104, 117, 123])/255.0
 
             else:
                 img, box, lab = aug(img,box,lab)

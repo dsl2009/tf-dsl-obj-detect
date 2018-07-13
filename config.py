@@ -138,7 +138,7 @@ face_inceptionv2_dsl_500 = {
 }
 
 remove_norm = {
-    'num_classes': 2,
+    'num_classes': 21,
     'feature_maps': [64, 32, 16],
     'min_dim': 512,
     'steps': [8, 16, 32],
@@ -204,7 +204,7 @@ server_coco_ann = '/data_set/data/annotations/instances_train2014.json'
 local_check = '/home/dsl/all_check/inception_v2.ckpt'
 server_check = '/data_set/check/inception_v2.ckpt'
 
-local_save = '/home/dsl/all_check/face_detect/voc_ssd_yolo_fen'
+local_save = '/home/dsl/all_check/face_detect/voc_ssd_yolo_fcai'
 server_save = '/data_set/check/voc_ssd_yolo'
 
 
