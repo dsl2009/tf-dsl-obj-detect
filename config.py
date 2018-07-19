@@ -204,7 +204,7 @@ server_coco_ann = '/data_set/data/annotations/instances_train2014.json'
 local_check = '/home/dsl/all_check/inception_v2.ckpt'
 server_check = '/data_set/check/inception_v2.ckpt'
 
-local_save = '/home/dsl/all_check/face_detect/voc_ssd_yolo_fcai'
+local_save = '/home/dsl/all_check/face_detect/coor_fen_new_loss1'
 server_save = '/data_set/check/voc_ssd_yolo'
 
 

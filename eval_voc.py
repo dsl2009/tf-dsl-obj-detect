@@ -1,4 +1,4 @@
-from models import iv2_mult_chan
+from models import iv2_mult_chan,iv2_mult_chan_add
 import tensorflow as tf
 import eval_utils
 import config
@@ -61,12 +61,12 @@ def detect():
     dts = '/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit/VOC2007/ImageSets/Main/test.txt'
     config.batch_size = 1
     ig = tf.placeholder(shape=(1, 512, 512, 3), dtype=tf.float32)
-    pred_loc, pred_confs, vbs = iv2_mult_chan.gen_box(ig,config)
+    pred_loc, pred_confs, vbs = iv2_mult_chan_add.gen_box_cai(ig,config)
     box,score,pp = predict(ig,pred_loc, pred_confs, vbs,config)
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/voc_ssd_yolo/model.ckpt-85183')
+        saver.restore(sess, '/home/dsl/all_check/face_detect/coor_fen/model.ckpt-111563')
         with open(dts) as f:
             ct = 1
             total_aps = []
@@ -93,7 +93,7 @@ def detect():
                 cls = []
                 scores = []
                 for kk in range(len(p)):
-                    if sc[kk]>0.6:
+                    if sc[kk]>0.5:
                         bxx.append(bx[kk])
                         cls.append(p[kk])
                         scores.append(sc[kk])
@@ -113,12 +113,12 @@ def detect():
                                         pred_boxes=finbox,
                                         pred_class_ids=np.asarray(cls),
                                         pred_scores=np.asarray(scores))
-                    print(mAP)
+                    print(mAP,precisions, recalls, overlaps)
                     total_aps.append(mAP)
 
                     print(sum(total_aps)/len(total_aps))
                 ct = ct + 1
-                visual.display_instances_title(org, np.asarray(bxx) * 512, class_ids=np.asarray(cls),
-                                            class_names=config.VOC_CLASSES, scores=scores)
+                #visual.display_instances_title(org, np.asarray(bxx) * 512, class_ids=np.asarray(cls),
+                                            #class_names=config.VOC_CLASSES, scores=scores)
 
 detect()

@@ -2,7 +2,7 @@ from models import iv2_mult_chan_add,iv2_mult_chan
 import tensorflow as tf
 import time
 import config
-
+from data_set.data_loader import q
 import config
 from model import get_loss,predict
 import data_gen
@@ -54,7 +54,7 @@ def train():
     with sv.managed_session() as sess:
         for step in range(1000000000):
 
-            images, true_box, true_label = next(gen)
+            images, true_box, true_label = q.get()
 
             loct, conft = np_utils.get_loc_conf(true_box, true_label, batch_size=config.batch_size,cfg=config.Config)
             feed_dict = {img: images, loc: loct,
@@ -78,8 +78,8 @@ def detect():
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/voc_ssd_yolo_fcai/model.ckpt-13810')
-        for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit/VOC2012/JPEGImages/*.jpg'):
+        saver.restore(sess, '/home/dsl/all_check/face_detect/coor_fen_new_loss1/model.ckpt-26092')
+        for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit/VOC2007/JPEGImages/*.jpg'):
             print(ip)
             img = cv2.imread(ip)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -104,12 +104,12 @@ def detect():
 def video():
     config.batch_size = 1
     ig = tf.placeholder(shape=(1, 512, 512, 3), dtype=tf.float32)
-    pred_loc, pred_confs, vbs = iv2_mult_chan_add.gen_box(ig,config)
+    pred_loc, pred_confs, vbs = iv2_mult_chan_add.gen_box_cai(ig,config)
     box,score,pp = predict(ig,pred_loc, pred_confs, vbs,config.Config)
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/voc_ssd_yolo_detect/model.ckpt-100293')
+        saver.restore(sess, '/home/dsl/all_check/face_detect/coor_fen_new_loss1/model.ckpt-30644')
         cap = cv2.VideoCapture('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/face_detect/jijing.mp4')
 
 
@@ -142,7 +142,7 @@ def video():
             cls = []
             scores = []
             for s in range(len(p)):
-                if sc[s] > 0.4:
+                if sc[s] > 0.5:
                     bxx.append(bx[s])
                     cls.append(p[s])
                     scores.append(sc[s])
@@ -163,4 +163,4 @@ def video():
         cv2.destroyAllWindows()
 
 
-detect()
+video()

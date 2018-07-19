@@ -92,6 +92,28 @@ def log_sum(x):
     mx = tf.reduce_max(x)
     data = tf.log(tf.reduce_sum(tf.exp(x - mx), axis=1)) + mx
     return tf.reshape(data, (-1, 1))
+def soft_focal_loss(logits,labels,number_cls=20):
+    labels = tf.one_hot(labels,number_cls)
+    loss = tf.reduce_sum(labels*(-(1 - tf.nn.softmax(logits))**2*tf.log(tf.nn.softmax(logits))),axis=1)
+    return loss
+
+def get_aver_loss(logits,labels,number_cls=20):
+    #total_loss = tf.nn.softmax_cross_entropy_with_logits_v2(logits=logists,labels=tf.one_hot(labels,number_cls))
+    total_loss = soft_focal_loss(logits=logits,labels=labels,number_cls=number_cls)
+    tt = []
+    for s  in range(number_cls):
+        ix = tf.where(tf.equal(labels,s))
+        ls = tf.gather(total_loss,ix)
+        ls = tf.keras.backend.switch(tf.cast(tf.size(ix)>0,tf.bool), tf.reduce_mean(ls),tf.constant(0.0))
+        tt.append(ls)
+    ls = tf.stack(tt)
+    ix = tf.where(tf.greater(ls,0))
+    ls = tf.gather(ls,ix)
+    return tf.reduce_mean(ls)
+
+
+
+
 
 def get_loss(conf_t,loc_t,pred_loc, pred_confs,cfg):
 
@@ -137,6 +159,8 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,cfg):
     pos_num = tf.reduce_sum(tf.cast(tf.greater(conf_t,0),dtype=tf.int32),axis=1)
     ne_num = pos_num*3
 
+
+
     los = []
     for s in range(cfg.batch_size):
         loss_tt = loss_c[s,:]
@@ -148,17 +172,24 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,cfg):
 
         label = tf.gather(conf_t[s,:],ix)
         label = tf.cast(label,tf.int32)
-        label = tf.one_hot(label,depth=cfg.Config['num_classes'])
+        lb,_,ct = tf.unique_with_counts(label)
+        tf.summary.histogram('lbs', values=lb)
+        tf.summary.histogram('ct', values=ct)
+
         logits = tf.gather(pred_confs[s,:],ix)
-
-
-
+        '''
+        label = tf.one_hot(label, depth=cfg.Config['num_classes'])
         ls = tf.keras.backend.switch(tf.size(label) > 0,
                                      tf.nn.softmax_cross_entropy_with_logits(labels=label, logits=logits),
                                  tf.constant(0.0))
 
         ls = tf.reduce_sum(ls)
-
+        '''
+        ls = tf.keras.backend.switch(tf.size(label) > 0,
+                                     soft_focal_loss(logits=logits, labels=label, number_cls=cfg.Config['num_classes']),
+                                     tf.constant(0.0))
+        #ls = get_aver_loss(logists=logits,labels=label,number_cls=cfg.Config['num_classes'])
+        ls = tf.reduce_sum(ls)
         los.append(ls)
 
     num = tf.reduce_sum(pos_num)
@@ -167,6 +198,13 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,cfg):
     final_loss_c = tf.keras.backend.switch(num > 0,
                                            tf.reduce_sum(los) / num,
                                  tf.constant(0.0))
+
+
+    '''
+    final_loss_c = tf.keras.backend.switch(num > 0,
+                                        tf.reduce_mean(los),
+                              tf.constant(0.0))
+    '''
 
     final_loss_l = tf.keras.backend.switch(num > 0,
                                            loss_l / num,
