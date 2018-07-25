@@ -1,4 +1,4 @@
-from nets import inception_v2,resnet_v2,inception_v3
+from nets import inception_v2,resnet_v2
 import tensorflow as tf
 import utils
 from tensorflow.contrib import slim
@@ -12,22 +12,7 @@ def inception_v2_ssd(img):
     c1 = end_point['Mixed_3c']
     c2 = end_point['Mixed_4e']
     c3 = end_point['Mixed_5c']
-
     return c1,c2,c3,vbs
-
-def inception_v3_ssd(img):
-    with slim.arg_scope(inception_v3.inception_v3_arg_scope()):
-        logits, end_point = inception_v3.inception_v3_base(img)
-        vbs = slim.get_variables_to_restore()
-
-
-    c1 = end_point['Mixed_5d']
-    c2 = end_point['Mixed_6e']
-    c3 = end_point['Mixed_7c']
-
-    return c1,c2,c3,vbs
-
-
 
 def resnetv2_ssd(img):
     with slim.arg_scope(resnet_v2.resnet_arg_scope()):
@@ -64,33 +49,11 @@ def inception(ip,filter_num,scope,stride):
 def detect_layer(img,cfg,is_train=True):
     c1,c2,c3,vbs = inception_v2_ssd(img)
 
-    #c3 = CoordConv(x_dim=16,y_dim=16,with_r=False)(c3,num_outputs=512,kernel_size=3)
+    c1 = CoordConv(x_dim=64,y_dim=64,with_r=False)(c1,num_outputs=512,kernel_size=3)
 
-
-    c3 = slim.conv2d(c3, 256, 3, activation_fn=None)
-    c2 = slim.conv2d(c2, 256, 3)
-    c1 = slim.conv2d(c1, 256, 3)
-
-    c2 = slim.conv2d(c2, 256, 1, 1, activation_fn=None) + tf.image.resize_bilinear(c3, size=tf.shape(c2)[1:3])
-
-    c1 = slim.conv2d(c1, 256, 1, 1, activation_fn=None) + tf.image.resize_bilinear(c2, size=tf.shape(c1)[1:3])
-
-    #c2 = tf.concat((c2,tf.image.resize_bilinear(c3, size=tf.shape(c2)[1:3])),axis=3)
-
-    #c1 = tf.concat((c1, tf.image.resize_bilinear(c3, size=tf.shape(c1)[1:3])), axis=3)
-
-
-    return [c1,c2,c3],vbs
-
-
-def detect_layer_v3(img,cfg,is_train=True):
-    c1,c2,c3,vbs = inception_v3_ssd(img)
-
-    c1 = CoordConv(x_dim=61,y_dim=61,with_r=False)(c1,num_outputs=512,kernel_size=3)
-
-    c3 = CoordConv(x_dim=14,y_dim=14,  with_r=False)(c3, num_outputs = 256, kernel_size=1,activation_fn=None)
-    c2 = CoordConv(x_dim=30, y_dim=30, with_r=False)(c2, num_outputs=256, kernel_size=1, activation_fn=None)
-    c1 = CoordConv(x_dim=61, y_dim=61, with_r=False)(c1, num_outputs=256, kernel_size=1, activation_fn=None)
+    c3 = CoordConv(x_dim=16,y_dim=16,  with_r=False)(c3, num_outputs = 256, kernel_size=1,activation_fn=None)
+    c2 = CoordConv(x_dim=32, y_dim=32, with_r=False)(c2, num_outputs=256, kernel_size=1, activation_fn=None)
+    c1 = CoordConv(x_dim=64, y_dim=64, with_r=False)(c1, num_outputs=256, kernel_size=1, activation_fn=None)
 
     #c2 = slim.conv2d(c2, 256, 1, 1, activation_fn=None) + tf.image.resize_bilinear(c3, size=tf.shape(c2)[1:3])
 
@@ -102,7 +65,6 @@ def detect_layer_v3(img,cfg,is_train=True):
 
 
     return [c1,c2,c3],vbs
-
 
 def detect_layer1(img,cfg,is_train=True):
     c1,c2,c3,vbs = inception_v2_ssd(img)

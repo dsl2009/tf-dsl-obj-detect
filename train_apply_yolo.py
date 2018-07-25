@@ -1,4 +1,4 @@
-from models import iv2_mult_chan_add,iv2_mult_chan
+from models import iv2_mult_chan_add,iv2_mult_chan,retinanet
 import tensorflow as tf
 import time
 import config
@@ -14,20 +14,16 @@ import utils
 import numpy as np
 import time
 import visual
-
+from models.coor_conv import AddCoords
 def train():
     img = tf.placeholder(shape=[config.batch_size, config.Config['min_dim'], config.Config['min_dim'], 3], dtype=tf.float32)
+    #ig = AddCoords(x_dim=512,y_dim=512)(img)
     anchors_num = sum(
-        [config.Config['feature_maps'][s] ** 2 * config.Config['aspect_num'][s] for s in range(3)])
-
+        [config.Config['feature_maps'][s] ** 2 * config.Config['aspect_num'][s] for s in range(5)])
     loc = tf.placeholder(shape=[config.batch_size, anchors_num, 4], dtype=tf.float32)
     conf = tf.placeholder(shape=[config.batch_size, anchors_num], dtype=tf.float32)
-
-    pred_loc, pred_confs, vbs = iv2_mult_chan_add.gen_box_cai(img,config)
-
-
+    pred_loc, pred_confs, vbs = retinanet.model(img)
     train_tensors = get_loss(conf, loc, pred_loc, pred_confs,config)
-
     gen = data_gen.get_batch_inception(batch_size=config.batch_size,image_size=config.Config['min_dim'],max_detect=50)
 
     global_step = slim.get_or_create_global_step()
@@ -43,16 +39,20 @@ def train():
 
     optimizer = tf.train.MomentumOptimizer(learning_rate=lr,momentum=0.9)
     train_op = slim.learning.create_train_op(train_tensors, optimizer)
-
+    vbs = []
+    for s in slim.get_trainable_variables():
+        if  s.name.startswith('InceptionV2'):
+            vbs.append(s)
     saver = tf.train.Saver(vbs)
 
     def restore(sess):
         saver.restore(sess, config.check_dir)
 
+
     sv = tf.train.Supervisor(logdir=config.save_dir, summary_op=None, init_fn=restore)
 
     with sv.managed_session() as sess:
-        for step in range(1000000000):
+        for step in range(200000):
 
             images, true_box, true_label = q.get()
 
@@ -72,14 +72,15 @@ def train():
 
 def detect():
     config.batch_size = 1
-    ig = tf.placeholder(shape=(1, 512, 512, 3), dtype=tf.float32)
-    pred_loc, pred_confs, vbs = iv2_mult_chan_add.gen_box_cai(ig,config)
-    box,score,pp = predict(ig,pred_loc, pred_confs, vbs,config.Config)
+    imgs = tf.placeholder(shape=(1, 512, 512, 3), dtype=tf.float32)
+    #ig = AddCoords(x_dim=512, y_dim=512)(imgs)
+    pred_loc, pred_confs, vbs = retinanet.model(imgs,config)
+    box,score,pp = predict(imgs,pred_loc, pred_confs, vbs,config.Config)
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/coor_fen_new_loss1/model.ckpt-26092')
-        for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit/VOC2007/JPEGImages/*.jpg'):
+        saver.restore(sess, '/home/dsl/all_check/face_detect/ret/model.ckpt-9063')
+        for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit/VOC2012/JPEGImages/*.jpg'):
             print(ip)
             img = cv2.imread(ip)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -88,7 +89,7 @@ def detect():
             img = (org/ 255.0-0.5)*2
             img = np.expand_dims(img, axis=0)
             t = time.time()
-            bx,sc,p= sess.run([box,score,pp],feed_dict={ig:img})
+            bx,sc,p= sess.run([box,score,pp],feed_dict={imgs:img})
             print(time.time()-t)
             bxx = []
             cls = []
@@ -109,7 +110,7 @@ def video():
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/coor_fen_new_loss1/model.ckpt-30644')
+        saver.restore(sess, '/home/dsl/all_check/face_detect/loss_change/model.ckpt-208983')
         cap = cv2.VideoCapture('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/face_detect/jijing.mp4')
 
 
@@ -125,7 +126,7 @@ def video():
 
             img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             org, window, scale, padding, crop = utils.resize_image(img, min_dim=config.Config['min_dim'],
-                                                                   max_dim=config.Config['min_dim'])
+                                                                   max_dim34315=config.Config['min_dim'])
 
             img = (org / 255.0 - 0.5) * 2
             img = np.expand_dims(img, axis=0)
@@ -163,4 +164,4 @@ def video():
         cv2.destroyAllWindows()
 
 
-video()
+detect()

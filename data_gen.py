@@ -111,6 +111,35 @@ def get_batch_inception(batch_size,is_shuff = True,max_detect = 50,image_size=30
                 b = 0
             if index>= length:
                 index = 0
+def get_batch_tree(batch_size,is_shuff = True,max_detect = 50,image_size=512):
+    b = 0
+    while True:
+        if True:
+            img,lab,box, _ = tree.get_image()
+
+            if True:
+                if random.randint(0,1)==1:
+                   img, box = aug_utils.fliplr_left_right(img,box)
+                #visual.display_instances(img, box * 512)
+                img = (img/255.0 - 0.5)*2
+
+            if b== 0:
+                images = np.zeros(shape=[batch_size,image_size,image_size,3],dtype=np.float32)
+                boxs = np.zeros(shape=[batch_size,max_detect,4],dtype=np.float32)
+                label = np.zeros(shape=[batch_size,max_detect],dtype=np.int32)
+                images[b,:,:,:] = img
+                boxs[b,:box.shape[0],:] = box
+                label[b,:box.shape[0]] = lab
+
+                b=b+1
+            else:
+                images[b, :, :, :] = img
+                boxs[b, :box.shape[0], :] = box
+                label[b, :box.shape[0]] = lab
+                b = b + 1
+            if b>=batch_size:
+                yield [images,boxs,label]
+                b = 0
 
 def get_batch_shapes(batch_size,is_shuff = True,max_detect = 50,image_size=512,mask_pool_size=56):
 
@@ -201,6 +230,6 @@ def get_coco(batch_size,is_shuff = True,max_detect = 50,image_size=512,mask_shap
 
 
 def tt():
-    gen = get_coco(batch_size=8,max_detect=50,mask_shape=56,ann='/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/building/train/annotation.json')
+    gen = get_batch_tree(4)
     for s in range(10):
         next(gen)

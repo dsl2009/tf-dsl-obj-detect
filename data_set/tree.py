@@ -69,11 +69,10 @@ class Tree(object):
 
         return ig,ids,box,mask
 
-data_set = Tree(root='/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/edge_detect/mask_rcnn/t1',
+data_set = Tree(root='/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/edge_detect/20180210_TREE/output/rgb/back',
                     image_size=512,
                     mask_pool_size=56)
 def get_image():
-
     x = random.randint(0,len(data_set.ids)-1)
     return data_set.pull_item(x)
 

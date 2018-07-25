@@ -139,13 +139,13 @@ face_inceptionv2_dsl_500 = {
 
 remove_norm = {
     'num_classes': 21,
-    'feature_maps': [64, 32, 16],
+    'feature_maps': [64, 32, 16,8,4],
     'min_dim': 512,
-    'steps': [8, 16, 32],
+    'steps': [8, 16, 32,64,128],
     'min_sizes': [10 , 50 ,165 ],
     'max_sizes': [50, 165 ,446 ],
     'aspect_ratios': [[2], [2], [2]],
-    'aspect_num':[9,9,15],
+    'aspect_num':[9,9,9,9,9],
     'variance': [0.1, 0.2],
     'clip': True,
     'name': 'VOC',
@@ -183,7 +183,7 @@ COCO_CLASSES = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus', 'tr
                 'refrigerator', 'book', 'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush']
 
 
-
+Tree = ['tree']
 MAX_GT = 100
 batch_size = 8
 image_size = 512
@@ -204,7 +204,7 @@ server_coco_ann = '/data_set/data/annotations/instances_train2014.json'
 local_check = '/home/dsl/all_check/inception_v2.ckpt'
 server_check = '/data_set/check/inception_v2.ckpt'
 
-local_save = '/home/dsl/all_check/face_detect/coor_fen_new_loss1'
+local_save = '/home/dsl/all_check/face_detect/ret'
 server_save = '/data_set/check/voc_ssd_yolo'
 
 
