@@ -1,4 +1,4 @@
-from nets import inception_v2,resnet_v2,inception_v3
+from nets import inception_v2,resnet_v2,inception_v3,resnet_v1
 import tensorflow as tf
 import utils
 from tensorflow.contrib import slim
@@ -61,7 +61,7 @@ def inception(ip,filter_num,scope,stride):
 
     return tf.concat([c1,c2,c3],axis=3)
 
-def detect_layer(img,cfg,is_train=True):
+def detect_layer11(img,cfg,is_train=True):
     c1,c2,c3,vbs = inception_v2_ssd(img)
 
     #c3 = CoordConv(x_dim=16,y_dim=16,with_r=False)(c3,num_outputs=512,kernel_size=3)
@@ -104,7 +104,7 @@ def detect_layer_v3(img,cfg,is_train=True):
     return [c1,c2,c3],vbs
 
 
-def detect_layer1(img,cfg,is_train=True):
+def detect_layer(img,cfg,is_train=True):
     c1,c2,c3,vbs = inception_v2_ssd(img)
     tmp1 = slim.conv2d(c1, num_outputs=256, kernel_size=[1, 13])
     tmp1 = slim.conv2d(tmp1, num_outputs=128, kernel_size=[13, 1],activation_fn=None)
@@ -141,7 +141,7 @@ def gen_box(img,cfg):
         loc.append(slim.conv2d(cv, num * 4, kernel_size=3, stride=1, activation_fn=None))
 
         conf.append(
-            slim.conv2d(cv, num * cfg.Config['num_classes'], kernel_size=3, stride=1, activation_fn=None))
+            slim.conv2d(cv, num * cfg.Config['num_classe7256s'], kernel_size=3, stride=1, activation_fn=None))
 
     loc = tf.concat([tf.reshape(o, shape=(cfg.batch_size, -1, 4)) for o in loc], axis=1)
     conf = tf.concat([tf.reshape(o, shape=(cfg.batch_size, -1, cfg.Config['num_classes'])) for o in conf],
@@ -153,13 +153,14 @@ def gen_box_cai(img,cfg):
     loc = []
     conf = []
     source,vbs = detect_layer(img,cfg)
-    for cv, num in zip(source, cfg.Config['aspect_num']):
-        tmp = slim.conv2d(cv, 256, kernel_size=[1,13], stride=1)
-        tmp = slim.conv2d(tmp, num * 4, kernel_size=[13,1], stride=1,activation_fn=None)
-        loc.append(tmp)
+    with tf.variable_scope('regression_bb', reuse=tf.AUTO_REUSE):
+        for cv, num in zip(source, cfg.Config['aspect_num']):
+            tmp = slim.conv2d(cv, 256, kernel_size=[1,13], stride=1,scope='cv1')
+            tmp = slim.conv2d(tmp, num * 4, kernel_size=[13,1], stride=1,activation_fn=None,scope='cv2')
+            loc.append(tmp)
 
-        tmp = slim.conv2d(tmp, num * cfg.Config['num_classes'], kernel_size=3, stride=1, activation_fn=None)
-        conf.append(tmp)
+            tmp = slim.conv2d(tmp, num * cfg.Config['num_classes'], kernel_size=3, stride=1, activation_fn=None,scope='cv3')
+            conf.append(tmp)
 
     loc = tf.concat([tf.reshape(o, shape=(cfg.batch_size, -1, 4)) for o in loc], axis=1)
     conf = tf.concat([tf.reshape(o, shape=(cfg.batch_size, -1, cfg.Config['num_classes'])) for o in conf],

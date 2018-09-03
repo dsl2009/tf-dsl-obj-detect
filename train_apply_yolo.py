@@ -14,7 +14,7 @@ import utils
 import numpy as np
 import time
 import visual
-from models.coor_conv import AddCoords
+
 def train():
     img = tf.placeholder(shape=[config.batch_size, config.Config['min_dim'], config.Config['min_dim'], 3], dtype=tf.float32)
     #ig = AddCoords(x_dim=512,y_dim=512)(img)
@@ -22,7 +22,7 @@ def train():
         [config.Config['feature_maps'][s] ** 2 * config.Config['aspect_num'][s] for s in range(5)])
     loc = tf.placeholder(shape=[config.batch_size, anchors_num, 4], dtype=tf.float32)
     conf = tf.placeholder(shape=[config.batch_size, anchors_num], dtype=tf.float32)
-    pred_loc, pred_confs, vbs = retinanet.model(img)
+    pred_loc, pred_confs, vbs = retinanet.model(img,config)
     train_tensors = get_loss(conf, loc, pred_loc, pred_confs,config)
     gen = data_gen.get_batch_inception(batch_size=config.batch_size,image_size=config.Config['min_dim'],max_detect=50)
 
@@ -40,9 +40,12 @@ def train():
     optimizer = tf.train.MomentumOptimizer(learning_rate=lr,momentum=0.9)
     train_op = slim.learning.create_train_op(train_tensors, optimizer)
     vbs = []
-    for s in slim.get_trainable_variables():
-        if  s.name.startswith('InceptionV2'):
+    for s in slim.get_variables():
+        print(s.name)
+        if 'resnet_v2_50' in s.name and 'Momentum' not in s.name:
+            print(s.name)
             vbs.append(s)
+
     saver = tf.train.Saver(vbs)
 
     def restore(sess):
@@ -53,7 +56,7 @@ def train():
 
     with sv.managed_session() as sess:
         for step in range(200000):
-
+            print('       '+' '.join(['*']*(step%10)))
             images, true_box, true_label = q.get()
 
             loct, conft = np_utils.get_loc_conf(true_box, true_label, batch_size=config.batch_size,cfg=config.Config)
@@ -79,14 +82,15 @@ def detect():
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/ret/model.ckpt-9063')
+        saver.restore(sess, '/home/dsl/all_check/face_detect/resnet50_pasc/model.ckpt-199863')
         for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit/VOC2012/JPEGImages/*.jpg'):
             print(ip)
             img = cv2.imread(ip)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
             org, window, scale, padding, crop = utils.resize_image(img, min_dim=512, max_dim=512)
 
-            img = (org/ 255.0-0.5)*2
+            #img = (org/ 255.0-0.5)*2
+            img = org - [123.15, 115.90, 103.06]
             img = np.expand_dims(img, axis=0)
             t = time.time()
             bx,sc,p= sess.run([box,score,pp],feed_dict={imgs:img})
@@ -105,30 +109,28 @@ def detect():
 def video():
     config.batch_size = 1
     ig = tf.placeholder(shape=(1, 512, 512, 3), dtype=tf.float32)
-    pred_loc, pred_confs, vbs = iv2_mult_chan_add.gen_box_cai(ig,config)
+    pred_loc, pred_confs, vbs = retinanet.model(ig,config)
     box,score,pp = predict(ig,pred_loc, pred_confs, vbs,config.Config)
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/loss_change/model.ckpt-208983')
+        saver.restore(sess, '/home/dsl/all_check/face_detect/resnet50/model.ckpt-18756')
         cap = cv2.VideoCapture('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/face_detect/jijing.mp4')
-
-
-
-
+        #cap = cv2.VideoCapture(0)
         cap.set(3, 320 * 3)
         cap.set(4, 320 * 3)
         t1 = time.time()
         while True:
             ret, frame = cap.read()
+
             if not ret:
-                break
+                continue
 
             img = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             org, window, scale, padding, crop = utils.resize_image(img, min_dim=config.Config['min_dim'],
-                                                                   max_dim34315=config.Config['min_dim'])
+                                                                   max_dim=config.Config['min_dim'])
 
-            img = (org / 255.0 - 0.5) * 2
+            img = org - [123.15, 115.90, 103.06]
             img = np.expand_dims(img, axis=0)
             t = time.time()
 
@@ -143,7 +145,7 @@ def video():
             cls = []
             scores = []
             for s in range(len(p)):
-                if sc[s] > 0.5:
+                if sc[s] > 0.4:
                     bxx.append(bx[s])
                     cls.append(p[s])
                     scores.append(sc[s])

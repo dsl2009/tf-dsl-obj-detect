@@ -150,6 +150,19 @@ remove_norm = {
     'clip': True,
     'name': 'VOC',
 }
+remove_norm_yolo = {
+    'num_classes': 21,
+    'feature_maps': [64, 32, 16],
+    'min_dim': 512,
+    'steps': [8, 16, 32],
+    'min_sizes': [10 , 50 ,165 ],
+    'max_sizes': [50, 165 ,446 ],
+    'aspect_ratios': [[2], [2], [2]],
+    'aspect_num':[9,9,9],
+    'variance': [0.1, 0.2],
+    'clip': True,
+    'name': 'VOC',
+}
 iv3_ssd_yolo = {
     'num_classes': 21,
     'feature_maps': [70, 34, 16],
@@ -201,10 +214,10 @@ local_coco_ann = '/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/coco/raw-data/
 server_coco_dir = '/data_set/data/train2014'
 server_coco_ann = '/data_set/data/annotations/instances_train2014.json'
 
-local_check = '/home/dsl/all_check/inception_v2.ckpt'
+local_check = '/home/dsl/all_check/resnet_v2_50_2017_04_14/resnet_v2_50.ckpt'
 server_check = '/data_set/check/inception_v2.ckpt'
 
-local_save = '/home/dsl/all_check/face_detect/ret'
+local_save = '/home/dsl/all_check/face_detect/resnet50_pasc'
 server_save = '/data_set/check/voc_ssd_yolo'
 
 

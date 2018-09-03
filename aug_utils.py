@@ -2,6 +2,9 @@ from imgaug import augmenters as igg
 import cv2
 import imgaug
 from matplotlib import pyplot as plt
+import skimage
+import tensorflow as tf
+
 import numpy as np
 def intersect(box_a, box_b):
     max_xy = np.minimum(box_a[:, 2:], box_b[2:])
@@ -31,6 +34,7 @@ def jaccard_numpy(box_a, box_b):
 
 def fliplr_left_right(img, box):
     img = igg.Fliplr(1.0).augment_image(img)
+
     x1,x2 = box[:,0],box[:,2]
     nx1 = 1-x2
     nx2 = 1-x1
@@ -38,3 +42,11 @@ def fliplr_left_right(img, box):
     box[:,2] = nx2
     return img,box
 
+def fliplr_up_down(img, box):
+    img = igg.Flipud(1.0).augment_image(img)
+    y1, y2 = box[:, 1], box[:, 3]
+    ny1 = 1 - y2
+    ny2 = 1 - y1
+    box[:, 1] = ny1
+    box[:, 3] = ny2
+    return img,box

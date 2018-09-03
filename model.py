@@ -94,7 +94,7 @@ def log_sum(x):
     return tf.reshape(data, (-1, 1))
 def soft_focal_loss(logits,labels,number_cls=20):
     labels = tf.one_hot(labels,number_cls)
-    loss = tf.reduce_sum(labels*(-(1 - tf.nn.softmax(logits))**2*tf.log(tf.nn.softmax(logits))),axis=1)
+    loss = tf.reduce_sum(labels*(-(1 - tf.nn.softmax(logits))**1*tf.log(tf.nn.softmax(logits))),axis=1)
     return loss
 
 def get_aver_loss(logits,labels,number_cls=20):
@@ -185,8 +185,9 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,cfg):
 
         ls = tf.reduce_sum(ls)
         '''
+        #label = tf.one_hot(label, depth=cfg.Config['num_classes'])
         ls = tf.keras.backend.switch(tf.size(label) > 0,
-                                     soft_focal_loss(logits=logits, labels=label, number_cls=cfg.Config['num_classes']),
+                                     soft_focal_loss(labels=label, logits=logits,number_cls=cfg.Config['num_classes']),
                                      tf.constant(0.0))
         #ls = get_aver_loss(logists=logits,labels=label,number_cls=cfg.Config['num_classes'])
         ls = tf.reduce_sum(ls)
@@ -259,7 +260,7 @@ def predict(ig,pred_loc, pred_confs, vbs,cfg):
     keep = tf.image.non_max_suppression(
         scores=score,
         boxes=box,
-        iou_threshold=0.3,
+        iou_threshold=0.4,
         max_output_size=50
     )
     return tf.gather(box,keep),tf.gather(score,keep),tf.gather(cls,keep)

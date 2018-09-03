@@ -64,9 +64,11 @@ def compute_ap(gt_boxes, gt_class_ids,
     # Trim zero padding and sort predictions by score from high to low
     # TODO: cleaner to do zero unpadding upstream
     gt_boxes = trim_zeros(gt_boxes)
-
+    print(gt_boxes)
     pred_boxes = trim_zeros(pred_boxes)
-
+    print(pred_boxes)
+    print(pred_class_ids)
+    print(gt_class_ids)
     pred_scores = pred_scores[:pred_boxes.shape[0]]
 
     indices = np.argsort(pred_scores)[::-1]
@@ -82,7 +84,7 @@ def compute_ap(gt_boxes, gt_class_ids,
     match_count = 0
     pred_match = np.zeros([pred_boxes.shape[0]])
     gt_match = np.zeros([gt_boxes.shape[0]])
-
+    print(overlaps)
     for i in range(len(pred_boxes)):
         # Find best matching ground truth box
         sorted_ixs = np.argsort(overlaps[i])[::-1]

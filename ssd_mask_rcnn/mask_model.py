@@ -241,6 +241,14 @@ def get_loss(conf_t,loc_t,pred_loc, pred_confs,target_mask,mask_fp,cfg):
     return train_tensors
 
 def get_target_mask(true_box,true_mask,mask_t,cfg):
+    '''
+    获取目标mask
+    :param true_box: 
+    :param true_mask: 
+    :param mask_t: 
+    :param cfg: 
+    :return: 
+    '''
     target_mask = []
     for s in range(cfg.batch_size):
         b = true_box[s,:,:]

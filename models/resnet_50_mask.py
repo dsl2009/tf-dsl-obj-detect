@@ -58,7 +58,7 @@ def regression_model(feature_map,ix):
         out_puts = slim.conv2d(feature_map, 4 * 9, kernel_size=3, stride=1,scope='regression',activation_fn=None)
         out_puts = tf.reshape(out_puts, shape=(config.batch_size,-1, 4))
 
-    return out_puts
+    return out_puts,feature_map
 
 def hebing(feature_map,scope):
     with tf.variable_scope(scope, reuse=tf.AUTO_REUSE):
@@ -81,12 +81,16 @@ def model(img,cfg):
     print(fpns)
     logits = []
     boxes = []
+    mask_fp = []
     for ix, fp in enumerate(fpns):
         logits.append(classfy_model(fp,0))
-        boxes.append(regression_model(fp,0))
+        box, m_fp = regression_model(fp, 0)
+        boxes.append(box)
+        if ix!=4:
+            mask_fp.append(m_fp)
 
 
     logits = tf.concat(logits, axis=1)
     boxes = tf.concat(boxes, axis=1)
-    print(boxes)
-    return boxes,logits,None
+
+    return boxes,logits,mask_fp

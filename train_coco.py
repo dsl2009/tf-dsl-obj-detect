@@ -2,7 +2,7 @@ import data_gen
 import tensorflow as tf
 import config
 from ssd_mask_rcnn import mask_model
-from models import mask_iv2,resnet_500
+from models import mask_iv2,resnet_500,resnet_50_mask
 from tensorflow.contrib import slim
 import np_utils
 from tensorflow.contrib.framework.python.ops.variables import get_or_create_global_step
@@ -14,10 +14,11 @@ import visual
 from matplotlib import pyplot as plt
 import cv2
 import glob
+
 def train():
     img = tf.placeholder(shape=[config.batch_size, config.image_size, config.image_size, 3], dtype=tf.float32)
     anchors_num = sum(
-        [config.Config['feature_maps'][s] ** 2 * config.Config['aspect_num'][s] for s in range(6)])
+        [config.Config['feature_maps'][s] ** 2 * config.Config['aspect_num'][s] for s in range(5)])
 
     input_loc_t = tf.placeholder(shape=[config.batch_size, anchors_num, 4], dtype=tf.float32)
     input_conf_t = tf.placeholder(shape=[config.batch_size, anchors_num], dtype=tf.float32)
@@ -29,7 +30,7 @@ def train():
                             mask_shape=config.mask_pool_shape*2,ann = config.annotations)
 
     input_gt_mask_trans = tf.transpose(input_gt_mask,[0,3,1,2])
-    pred_loc, pred_confs, mask_fp, vbs = resnet_500.model(img, config)
+    pred_loc, pred_confs, mask_fp = resnet_50_mask.model(img, config)
 
     target_mask = mask_model.get_target_mask(input_gt_box, input_gt_mask_trans, input_mask_index,config)
 
@@ -47,8 +48,13 @@ def train():
     optimizer = tf.train.MomentumOptimizer(learning_rate=0.001,momentum=0.9)
     train_op = slim.learning.create_train_op(train_tensors, optimizer)
 
+    vbs = []
+    for s in slim.get_variables():
+        print(s.name)
+        if 'resnet_v2_50' in s.name and 'Momentum' not in s.name:
+            print(s.name)
+            vbs.append(s)
     saver = tf.train.Saver(vbs)
-
     def restore(sess):
         saver.restore(sess, config.check_dir)
 
@@ -84,22 +90,22 @@ def train():
 def detect():
     config.batch_size = 1
     ig = tf.placeholder(shape=(1, config.image_size, config.image_size, 3), dtype=tf.float32)
-    pred_loc, pred_confs, mask_fp, vbs = mask_iv2.inception_v2_ssd(ig, config)
+    pred_loc, pred_confs, mask_fp =  resnet_50_mask.model(ig, config)
     box,score,pp,masks = mask_model.predict(pred_loc, pred_confs,mask_fp, config)
 
 
     saver = tf.train.Saver()
     with tf.Session() as sess:
         sess.run(tf.global_variables_initializer())
-        saver.restore(sess, '/home/dsl/all_check/face_detect/coco-768/model.ckpt-51415')
-        for ip in glob.glob('/home/dsl/95048b8e9492e290.jpg'):
+        saver.restore(sess, '/home/dsl/all_check/face_detect/resnet50_coco/model.ckpt-237738')
+        for ip in glob.glob('/media/dsl/20d6b919-92e1-4489-b2be-a092290668e4/VOCdevkit/VOCdevkit/VOC2012/JPEGImages/*.jpg'):
             print(ip)
             img = cv2.imread(ip)
             img = cv2.cvtColor(img,cv2.COLOR_BGR2RGB)
 
             org, window, scale, padding, crop = utils.resize_image(img, min_dim=config.image_size, max_dim=config.image_size)
 
-            img = (org/ 255.0-0.5)*2
+            img = org - [123.15, 115.90, 103.06]
             img = np.expand_dims(img, axis=0)
 
             t = time.time()

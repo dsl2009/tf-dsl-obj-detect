@@ -3,7 +3,7 @@ import torch
 import numpy as np
 import tensorflow as tf
 import utils
-tf.enable_eager_execution()
+#tf.enable_eager_execution()
 
 def tensor_shape(x, rank=3):
     """Returns the dimensions of a tensor.
@@ -40,9 +40,4 @@ def log_sum_exp(x):
     print(x_max)
     return torch.log(torch.sum(torch.exp(x-x_max), 1, keepdim=True)) + x_max
 
-logists = [[0.5,1,2],[0.2,3,1]]
-label = [0,2]
-ls1 = tf.nn.sparse_softmax_cross_entropy_with_logits(labels=label,logits=logists)
-ls2 = tf.nn.softmax_cross_entropy_with_logits(labels=tf.one_hot(label,3),logits=logists)
-print(ls1)
-print(ls2)
+

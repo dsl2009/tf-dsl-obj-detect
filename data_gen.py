@@ -8,10 +8,12 @@ import visual
 import config
 from data_set.augmentations import SSDAugmentation
 from data_set.shapes import get_image
+import visual
 #data_set = face.Face(root='/home/dsl/PycharmProjects/tf-ssd/data_set/face1.json',image_size=512)
 from pycocotools.coco import COCO
 from data_set.coco import get_image as get_coco_image
 from data_set import tree
+import cv2
 data_set = VOCDetection(config.voc_dir)
 def get_batch(batch_size,is_shuff = True,max_detect = 50,image_size=300):
     length = data_set.len()
@@ -74,10 +76,14 @@ def get_batch_inception(batch_size,is_shuff = True,max_detect = 50,image_size=30
 
                 if random.randint(0,1)==1:
                    img, box = aug_utils.fliplr_left_right(img,box)
+                if random.randint(0,1)==1:
+                    img = cv2.cvtColor(img,cv2.COLOR_RGB2BGR)
+
+                #visual.display_instances(img,box*512)
                 #img = img/255.0
                 #img = img - 0.5
                 #img = img * 2.0
-                img = (img/255.0 - 0.5)*2
+                img = img -[123.15, 115.90, 103.06]
                 #img = (img-[104, 117, 123])/255.0
 
             else:
@@ -197,9 +203,8 @@ def get_coco(batch_size,is_shuff = True,max_detect = 50,image_size=512,mask_shap
                 print(index)
                 continue
             #visual.display_instances(img,box*image_size)
-            img = img/255.0
-            img = img - 0.5
-            img = img * 2.0
+
+            img = img - [123.15, 115.90, 103.06]
             #img = (img.astype(np.float32) - np.array([123.7, 116.8, 103.9]))/255
             if b== 0:
                 images = np.zeros(shape=[batch_size,image_size,image_size,3],dtype=np.float32)
@@ -230,6 +235,6 @@ def get_coco(batch_size,is_shuff = True,max_detect = 50,image_size=512,mask_shap
 
 
 def tt():
-    gen = get_batch_tree(4)
+    gen = get_batch_inception(4,image_size=512)
     for s in range(10):
         next(gen)
